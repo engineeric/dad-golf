@@ -32,6 +32,9 @@
   --radius: 4px;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   --gutter: 28px;
+  /* Side padding that also clears the notch in landscape (needs viewport-fit=cover). */
+  --pad-l: max(var(--gutter), env(safe-area-inset-left));
+  --pad-r: max(var(--gutter), env(safe-area-inset-right));
   color-scheme: light dark;
 }
 
@@ -60,7 +63,8 @@
 *::before,
 *::after { box-sizing: border-box; }
 
-html { -webkit-text-size-adjust: 100%; }
+/* Navy behind the page so iOS overscroll and safe areas match the header/footer. */
+html { -webkit-text-size-adjust: 100%; background: var(--navy); }
 
 body {
   margin: 0;
@@ -99,6 +103,7 @@ button, select { font: inherit; color: inherit; }
 /* ---------- Header ---------- */
 
 .site-header {
+  padding-top: env(safe-area-inset-top);
   background: var(--navy);
   color: var(--white);
   border-bottom: 3px solid var(--gold);
@@ -107,7 +112,7 @@ button, select { font: inherit; color: inherit; }
 .site-header__inner {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 16px var(--gutter);
+  padding: 16px var(--pad-r) 16px var(--pad-l);
   display: flex;
   align-items: center;
   gap: 18px;
@@ -184,7 +189,7 @@ button, select { font: inherit; color: inherit; }
   background: var(--navy);
   color: var(--white);
   text-align: center;
-  padding: 18px var(--gutter);
+  padding: 18px var(--pad-r) 18px var(--pad-l);
   border-bottom: 1px solid var(--navy-2);
 }
 
@@ -206,10 +211,11 @@ main {
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 24px var(--gutter) 40px;
+  padding: 24px var(--pad-r) 40px var(--pad-l);
 }
 
 .site-footer {
+  padding-bottom: env(safe-area-inset-bottom);
   background: var(--navy);
   color: rgba(255, 255, 255, 0.6);
   border-top: 3px solid var(--gold);
@@ -218,7 +224,7 @@ main {
 .site-footer__inner {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 18px var(--gutter) 22px;
+  padding: 18px var(--pad-r) 22px var(--pad-l);
   display: flex;
   justify-content: space-between;
   gap: 12px;
