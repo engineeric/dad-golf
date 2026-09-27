@@ -21,7 +21,10 @@ function setupSheet() {
     players.getRange(2, captainCol.index, lastPlayerRow - 1).insertCheckboxes();
     log.push('Players: tick one Captain per team');
   }
-  const playerNames = players.getRange('A2:A' + lastPlayerRow);
+  // Matches dropdowns list nicknames (the Players Name column is optional and best removed).
+  const nameCol = headers(players).indexOf('Nickname') >= 0 ? headers(players).indexOf('Nickname') + 1 : headers(players).indexOf('Name') + 1;
+  if (!nameCol) throw new Error('Players needs a Nickname column.');
+  const playerNames = players.getRange(2, nameCol, lastPlayerRow - 1);
 
   // ---------- Settings (one header row + one value row) ----------
   const teamNames = uniqueTeams(players);

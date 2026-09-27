@@ -106,30 +106,36 @@ export function parseDate(v) {
 }
 
 /**
- * Players are identified by nickname (falling back to name) so full names never
- * reach the page. Returns the players plus a map from sheet name/nickname → display name.
+ * Players are identified by Nickname. A Name column is optional (and best left out
+ * of the public sheet); when present it's only used to resolve Matches entries.
+ * Returns the players plus a map from sheet name/nickname → display name.
  */
 function normalizePlayers(rows, teams) {
   const players = rows
     .map((r) => ({
-      fullName: r.name,
+      fullName: r.name || '',
       name: r.nickname || r.name,
       hcp: num(r.handicapindex ?? r.handicap ?? r.hcp),
       side: sideOf(r.team, teams),
       flight: (r.flight || '').toUpperCase(),
       captain: truthy(r.captain),
     }))
-    .filter((p) => p.fullName && p.side && p.hcp != null);
+    .filter((p) => p.name && p.side && p.hcp != null);
 
-  // Disambiguate duplicate nicknames with a last-name initial.
+  // Disambiguate duplicate nicknames: last-name initial if known, else a number.
   const counts = players.reduce((c, p) => c.set(p.name, (c.get(p.name) ?? 0) + 1), new Map());
+  const seen = new Map();
   for (const p of players) {
-    if (counts.get(p.name) > 1) p.name = `${p.name} ${p.fullName.trim().split(/\s+/).pop()[0]}.`;
+    if (counts.get(p.name) < 2) continue;
+    const n = (seen.get(p.name) ?? 0) + 1;
+    seen.set(p.name, n);
+    const initial = p.fullName.trim().split(/\s+/).pop()?.[0];
+    p.name = initial ? `${p.name} ${initial}.` : `${p.name} ${n}`;
   }
 
   const aliases = new Map();
   for (const p of players) {
-    aliases.set(key(p.fullName), p.name);
+    if (p.fullName) aliases.set(key(p.fullName), p.name);
     aliases.set(key(p.name), p.name);
   }
   return { players: players.map(({ fullName, ...p }) => p), aliases };
@@ -191,7 +197,7 @@ function normalizeSettings(rows, playerRows) {
 
 export async function loadData() {
   const [players, matches, schedule, settings] = await Promise.all([
-    fetchTab('Players', ['name', 'team', 'flight']),
+    fetchTab('Players', ['team', 'flight']),
     fetchTab('Matches', ['round', 'red1', 'blue1', 'winner']),
     fetchTab('Schedule', ['round', 'format', 'course']),
     fetchTab('Settings', ['timezone']),
