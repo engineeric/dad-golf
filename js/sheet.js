@@ -105,19 +105,38 @@ export function parseDate(v) {
   return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() };
 }
 
+/**
+ * Players are identified by nickname (falling back to name) so full names never
+ * reach the page. Returns the players plus a map from sheet name/nickname → display name.
+ */
 function normalizePlayers(rows, teams) {
-  return rows
+  const players = rows
     .map((r) => ({
-      name: r.name,
+      fullName: r.name,
+      name: r.nickname || r.name,
       hcp: num(r.handicapindex ?? r.handicap ?? r.hcp),
       side: sideOf(r.team, teams),
       flight: (r.flight || '').toUpperCase(),
       captain: truthy(r.captain),
     }))
-    .filter((p) => p.name && p.side && p.hcp != null);
+    .filter((p) => p.fullName && p.side && p.hcp != null);
+
+  // Disambiguate duplicate nicknames with a last-name initial.
+  const counts = players.reduce((c, p) => c.set(p.name, (c.get(p.name) ?? 0) + 1), new Map());
+  for (const p of players) {
+    if (counts.get(p.name) > 1) p.name = `${p.name} ${p.fullName.trim().split(/\s+/).pop()[0]}.`;
+  }
+
+  const aliases = new Map();
+  for (const p of players) {
+    aliases.set(key(p.fullName), p.name);
+    aliases.set(key(p.name), p.name);
+  }
+  return { players: players.map(({ fullName, ...p }) => p), aliases };
 }
 
-function normalizeMatches(rows, teams) {
+function normalizeMatches(rows, teams, aliases) {
+  const display = (n) => aliases.get(key(n)) ?? n;
   return (rows ?? [])
     .map((r, i) => {
       const time = parseTime(r.teetime);
@@ -125,8 +144,8 @@ function normalizeMatches(rows, teams) {
         row: i,
         round: num(r.round),
         teeTime: time,
-        red: [r.red1, r.red2].filter(Boolean),
-        blue: [r.blue1, r.blue2].filter(Boolean),
+        red: [r.red1, r.red2].filter(Boolean).map(display),
+        blue: [r.blue1, r.blue2].filter(Boolean).map(display),
         winner: HALVED.has(key(r.winner)) ? 'Halved' : sideOf(r.winner, teams),
         result: r.result || '',
       };
@@ -179,9 +198,10 @@ export async function loadData() {
   ]);
   if (!players) throw new Error('The "Players" tab is missing from the sheet.');
   const normalizedSettings = normalizeSettings(settings, players);
+  const roster = normalizePlayers(players, normalizedSettings.teams);
   return {
-    players: normalizePlayers(players, normalizedSettings.teams),
-    matches: normalizeMatches(matches ?? [], normalizedSettings.teams),
+    players: roster.players,
+    matches: normalizeMatches(matches ?? [], normalizedSettings.teams, roster.aliases),
     schedule: normalizeSchedule(schedule),
     settings: normalizedSettings,
   };
