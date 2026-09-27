@@ -24,6 +24,18 @@ const mapEmbed = (q) => `https://www.google.com/maps?q=${encodeURIComponent(q)}&
 
 const groupHas = (group, name) => group.matches.some((m) => m.red.includes(name) || m.blue.includes(name));
 
+/**
+ * "Street, City, ST 12345" → street on the first line, the rest on the second.
+ * Line breaks typed in the cell win; addresses with fewer than two commas stay on one line.
+ */
+function formatAddress(address) {
+  const commas = (address.match(/,/g) ?? []).length;
+  const lines = address.includes('\n') ? address.split('\n')
+    : commas >= 2 ? address.replace(/^([^,]+),\s*/, '$1\n').split('\n')
+      : [address];
+  return lines.map((l) => esc(l.trim())).filter(Boolean).join('<br>');
+}
+
 // ---------- Calendar ----------
 
 function ratingSuffix(day) {
@@ -128,7 +140,7 @@ function renderDay(day) {
             <h3>${courseName}</h3>
           </div>
           <div class="stats">${stat('Tees', day.tees)}${stat('Yardage', day.yardage)}${stat('Par', day.par)}${stat('Rating', day.rating)}${stat('Slope', day.slope)}</div>
-          ${day.address ? `<div class="address">${esc(day.address)}</div>` : ''}
+          ${day.address ? `<address class="address">${formatAddress(day.address)}</address>` : ''}
           ${day.notes ? `<p class="notes">${esc(day.notes)}</p>` : ''}
           ${q ? `
             <div class="btn-row">
