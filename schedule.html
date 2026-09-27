@@ -82,9 +82,17 @@
     .tee__time { font-family: var(--serif); font-weight: 700; font-size: 22px; }
     .tee__time small { display: block; font-family: var(--sans); color: var(--gold); font-size: 9px; margin-top: 2px; }
     .tee__matches { display: grid; gap: 8px; }
-    .tee__match { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    /* Fixed column tracks so every player card is the same width. */
+    .tee__match {
+      display: grid;
+      grid-template-columns: 62px minmax(0, 300px) auto minmax(0, 300px);
+      align-items: center;
+      gap: 6px;
+    }
+    .tee__side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+    .tee__side .chip { display: block; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .tee__match .vs { color: var(--muted); font-size: 10px; margin: 0 4px; }
-    .tee__match .label { color: var(--muted); font-size: 9px; width: 62px; flex: none; }
+    .tee__match .label { color: var(--muted); font-size: 9px; }
     .empty { padding: 18px 22px; border-top: 1px solid var(--rule); }
 
     dialog {
@@ -113,8 +121,11 @@
       .day__head, .course { padding: 16px; }
       .tee { grid-template-columns: 1fr; gap: 8px; padding: 12px 16px; }
       .teesheet__head { padding: 12px 16px; }
-      .tee__match .label { width: 100%; }
-      .chip { font-size: 13px; }
+      .tee__match { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 4px; }
+      .tee__side { gap: 4px; }
+      .tee__side .chip { padding: 7px 3px 8px; font-size: 12.5px; }
+      .tee__match .vs { margin: 0 2px; }
+      .tee__match .label { grid-column: 1 / -1; }
       .findme .select { max-width: none; }
     }
   </style>
