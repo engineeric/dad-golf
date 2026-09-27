@@ -26,6 +26,11 @@ const groupHas = (group, name) => group.matches.some((m) => m.eric.includes(name
 
 // ---------- Calendar ----------
 
+function ratingSuffix(day) {
+  const parts = [day.rating && `Rating ${day.rating}`, day.slope && `Slope ${day.slope}`].filter(Boolean);
+  return parts.length ? ` (${parts.join(', ')})` : '';
+}
+
 function eventFor(day) {
   const groups = teeGroups(day);
   const mine = me && groups.find((g) => groupHas(g, me));
@@ -33,7 +38,7 @@ function eventFor(day) {
   const lines = [
     day.formatInfo ? `${day.formatInfo.title} (${day.formatInfo.sub})` : null,
     day.course ? `Course: ${day.course}` : null,
-    day.tees ? `Tees: ${day.tees}` : null,
+    day.tees ? `Tees: ${day.tees}${ratingSuffix(day)}` : null,
     mine?.teeTime ? `${me}'s tee time: ${formatTime(mine.teeTime)}` : null,
     groups.some((g) => g.teeTime) ? '' : null,
     ...groups.filter((g) => g.teeTime).map((g) =>
@@ -122,7 +127,7 @@ function renderDay(day) {
             <span class="eyebrow">Course</span>
             <h3>${courseName}</h3>
           </div>
-          <div class="stats">${stat('Tees', day.tees)}${stat('Yardage', day.yardage)}${stat('Par', day.par)}</div>
+          <div class="stats">${stat('Tees', day.tees)}${stat('Yardage', day.yardage)}${stat('Par', day.par)}${stat('Rating', day.rating)}${stat('Slope', day.slope)}</div>
           ${day.address ? `<div class="address">${esc(day.address)}</div>` : ''}
           ${day.notes ? `<p class="notes">${esc(day.notes)}</p>` : ''}
           ${q ? `

@@ -61,6 +61,8 @@ export function buildDays({ schedule, matches }) {
       tees: info.tees ?? '',
       yardage: info.yardage ?? '',
       par: info.par ?? '',
+      rating: info.rating ?? '',
+      slope: info.slope ?? '',
       notes: info.notes ?? '',
       matches: dayMatches,
     };

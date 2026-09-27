@@ -30,17 +30,19 @@ function setupDaddyIV() {
 
   // ---------- Schedule ----------
   const schedule = createTab(ss, 'Schedule',
-    ['Round', 'Format', 'Date', 'Course', 'Course URL', 'Address', 'Tees', 'Yardage', 'Par', 'Notes']);
+    ['Round', 'Format', 'Date', 'Course', 'Course URL', 'Address', 'Tees', 'Yardage', 'Par', 'Rating', 'Slope', 'Notes']);
   if (schedule) {
     schedule.getRange('A2:A4').setValues([[1], [2], [3]]).setHorizontalAlignment('center');
     schedule.getRange('B2:B4').setDataValidation(list(['Matched', 'Mixed', 'Singles']));
     schedule.getRange('C2:C4').setNumberFormat('yyyy-mm-dd')
       .setDataValidation(SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(false).build());
     schedule.getRange('H2:I4').setNumberFormat('#,##0');
+    schedule.getRange('J2:J4').setNumberFormat('0.0');
+    schedule.getRange('K2:K4').setNumberFormat('0');
     schedule.setColumnWidth(4, 200);
     schedule.setColumnWidth(5, 200);
     schedule.setColumnWidth(6, 280);
-    schedule.setColumnWidth(10, 280);
+    schedule.setColumnWidth(12, 280);
     created.push('Schedule');
   }
 

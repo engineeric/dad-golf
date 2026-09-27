@@ -48,9 +48,17 @@
     .course h3 a:hover { text-decoration: underline; }
     .course h3 svg { width: 16px; height: 16px; color: var(--muted); }
     .course .eyebrow { color: var(--muted); font-size: 10px; }
-    .stats { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--rule); border-radius: 3px; }
-    .stats div { padding: 10px 12px; }
-    .stats div + div { border-left: 1px solid var(--rule); }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--rule);
+      border: 1px solid var(--rule);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .stats div { padding: 10px 12px; background: var(--surface); }
+    .stats div:first-child { grid-column: 1 / -1; }
     .stats strong { display: block; font-size: 18px; margin-top: 2px; }
     .address { font-size: 15px; }
     .notes { font-size: 15px; background: var(--cream); padding: 10px 12px; border-radius: 3px; margin: 0; white-space: pre-line; }

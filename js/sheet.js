@@ -137,6 +137,8 @@ function normalizeSchedule(rows) {
       tees: r.tees || '',
       yardage: r.yardage || '',
       par: r.par || '',
+      rating: r.rating || '',
+      slope: r.slope || '',
       notes: r.notes || '',
     }))
     .filter((d) => d.round != null);
