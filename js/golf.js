@@ -94,7 +94,33 @@ export function formatTime(t) {
   return `${h12}:${String(t.m).padStart(2, '0')} ${t.h < 12 ? 'AM' : 'PM'}`;
 }
 
-export const formatHcp = (n) => (n == null ? '—' : n.toFixed(1));
+/** Offset (ms) of `timeZone` from UTC at instant `t`. */
+function zoneOffset(t, timeZone) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric',
+    }).formatToParts(t).map((p) => [p.type, p.value]),
+  );
+  return Date.UTC(+parts.year, parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second) - t;
+}
+
+/** Converts a wall-clock date/time in `timeZone` to an epoch timestamp. */
+export function zonedTime(date, time, timeZone) {
+  const wall = Date.UTC(date.y, date.m - 1, date.d, time?.h ?? 0, time?.m ?? 0);
+  const guess = wall - zoneOffset(wall, timeZone);
+  return wall - zoneOffset(guess, timeZone); // second pass settles DST boundaries
+}
+
+/** When play begins: the earliest dated day and its first tee time (if posted). */
+export function tournamentStart(days, timeZone) {
+  const first = days.filter((d) => d.date)
+    .sort((a, b) => Date.UTC(a.date.y, a.date.m - 1, a.date.d) - Date.UTC(b.date.y, b.date.m - 1, b.date.d))[0];
+  if (!first) return null;
+  const teeTime = first.matches.find((m) => m.teeTime)?.teeTime ?? null;
+  return { day: first, teeTime, at: zonedTime(first.date, teeTime, timeZone) };
+}
+
+export const formatHcp =(n) => (n == null ? '—' : n.toFixed(1));
 
 export function formatPts(n) {
   const whole = Math.floor(n);

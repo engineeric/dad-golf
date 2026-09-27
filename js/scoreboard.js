@@ -1,6 +1,7 @@
 import { loadData } from './sheet.js';
 import {
   TOTAL_POINTS, TO_WIN, buildDays, dayTitle, formatDate, formatHcp, formatPts, formatTime, points, teamHcp,
+  tournamentStart,
 } from './golf.js';
 import { esc, renderChrome, showError } from './ui.js';
 
@@ -10,23 +11,57 @@ renderChrome('scoreboard');
 const app = document.getElementById('app');
 const banner = document.getElementById('banner');
 
-function renderBanner(pts, played, days) {
+const DAY_MS = 86_400_000;
+let start = null; // { day, teeTime, at } until play begins
+
+function countdownParts(ms) {
+  if (!start.teeTime) {
+    const days = Math.ceil(ms / DAY_MS);
+    return [[String(days), days === 1 ? 'Day to go' : 'Days to go']];
+  }
+  const s = Math.floor(ms / 1000);
+  const pad = (n) => String(n).padStart(2, '0');
+  return [
+    [String(Math.floor(s / 86400)), 'Days'],
+    [pad(Math.floor(s / 3600) % 24), 'Hrs'],
+    [pad(Math.floor(s / 60) % 60), 'Min'],
+    [pad(s % 60), 'Sec'],
+  ];
+}
+
+function renderCountdown() {
+  const el = document.getElementById('countdown');
+  if (!el || !start) return;
+  const ms = start.at - Date.now();
+  if (ms <= 0) { start = null; refresh(); return; }
+  el.innerHTML = countdownParts(ms)
+    .map(([n, label]) => `<div><strong>${n}</strong><span class="eyebrow">${label}</span></div>`)
+    .join('');
+}
+
+function renderBanner(pts, played, days, settings) {
   const lead = pts.Garrett > pts.Eric ? 'Garrett' : pts.Eric > pts.Garrett ? 'Eric' : null;
   const winner = pts.Garrett >= TO_WIN ? 'Garrett' : pts.Eric >= TO_WIN ? 'Eric' : null;
   const score = `${formatPts(pts.Garrett)}–${formatPts(pts.Eric)}`;
   let title;
   let tint = null;
+  start = null;
   if (winner) title = `Team ${winner} Wins the Cup`;
   else if (played === TOTAL_POINTS) title = `Halved ${score}`;
   else if (!played) {
-    const first = days.find((d) => d.date);
-    title = first ? `First Tee · ${formatDate(first.date)}` : 'The Daddy Invitational IV';
+    const next = tournamentStart(days, settings.timezone);
+    if (!next) title = 'The Daddy Invitational IV';
+    else if (next.at > Date.now()) {
+      start = next;
+      title = `Tees Off ${formatDate(next.day.date)}${next.teeTime ? ` · ${formatTime(next.teeTime)}` : ''}`;
+    } else title = `Day ${next.day.round} Underway`;
   } else if (lead) {
     title = `Team ${lead} Leads ${lead === 'Garrett' ? score : `${formatPts(pts.Eric)}–${formatPts(pts.Garrett)}`}`;
     tint = lead;
   } else title = `All Square ${score}`;
   banner.className = `banner${tint ? ` bg-${tint.toLowerCase()}` : ''}`;
-  banner.innerHTML = `<h1>${esc(title)}</h1>`;
+  banner.innerHTML = `<h1>${esc(title)}</h1>${start ? '<div class="countdown" id="countdown" role="timer"></div>' : ''}`;
+  renderCountdown();
 }
 
 function heroStatus(pts, played) {
@@ -133,7 +168,7 @@ async function refresh() {
     const all = days.flatMap((d) => d.matches);
     const pts = points(all);
     const played = all.filter((m) => m.winner).length;
-    renderBanner(pts, played, days);
+    renderBanner(pts, played, days, data.settings);
     app.innerHTML = `
       ${renderHero(pts, played)}
       <div class="rounds">${days.map((d) => renderDay(d, players, data.settings)).join('')}</div>`;
@@ -144,4 +179,5 @@ async function refresh() {
 
 refresh();
 setInterval(() => { if (!document.hidden) refresh(); }, REFRESH_MS);
+setInterval(renderCountdown, 1000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
