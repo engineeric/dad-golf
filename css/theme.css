@@ -12,13 +12,48 @@
   --blue: #0d3d94;
   --white: #fff;
 
+  /* Theme-dependent tokens: light defaults, dark overrides below.
+     --cream doubles as the in-card secondary surface; --ink is body text. */
+  --bg: #f5f0e6;
+  --surface: #fff;
+  --text-2: rgba(18, 26, 46, 0.8);
+  --rule-strong: #121a2e;
+  --fg-garrett: #b01230;
+  --fg-eric: #0d3d94;
+  --won-garrett: rgba(176, 18, 48, 0.08);
+  --won-eric: rgba(13, 61, 148, 0.08);
+  --btn-solid: #0d1c38;
+  --btn-solid-hover: #1a2b4d;
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23121a2e' stroke-width='1.6'/%3E%3C/svg%3E");
+
   --serif: ui-serif, "New York", "Iowan Old Style", Georgia, serif;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
 
   --radius: 4px;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   --gutter: 28px;
-  color-scheme: light;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0a1222;
+    --surface: #131e36;
+    --cream: #1b2842;
+    --ink: #ebe7de;
+    --text-2: rgba(235, 231, 222, 0.8);
+    --muted: #8f98ab;
+    --rule: #26344f;
+    --rule-strong: #4b5b7c;
+    --fg-garrett: #ff7085;
+    --fg-eric: #8fb0ff;
+    --won-garrett: rgba(255, 90, 115, 0.13);
+    --won-eric: rgba(110, 150, 255, 0.15);
+    --btn-solid: #26395f;
+    --btn-solid-hover: #30466f;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+    --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23ebe7de' stroke-width='1.6'/%3E%3C/svg%3E");
+  }
 }
 
 *,
@@ -32,7 +67,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--cream);
+  background: var(--bg);
   color: var(--ink);
   font-family: var(--sans);
   font-size: 16px;
@@ -195,7 +230,7 @@ main {
 /* ---------- Cards & panels ---------- */
 
 .card {
-  background: var(--white);
+  background: var(--surface);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   overflow: hidden;
@@ -207,7 +242,7 @@ main {
   justify-content: space-between;
   gap: 12px;
   padding: 16px 20px;
-  border-bottom: 2px solid var(--ink);
+  border-bottom: 2px solid var(--rule-strong);
 }
 
 .card__head h2 {
@@ -248,8 +283,8 @@ main {
 
 .bg-garrett { background: var(--red); }
 .bg-eric { background: var(--blue); }
-.fg-garrett { color: var(--red); }
-.fg-eric { color: var(--blue); }
+.fg-garrett { color: var(--fg-garrett); }
+.fg-eric { color: var(--fg-eric); }
 
 /* Roster rows */
 
@@ -277,7 +312,7 @@ main {
 
 .roster__name { font-size: 18px; font-weight: 600; }
 .roster__tag { color: var(--gold); font-size: 10px; }
-.roster__hcp { margin-left: auto; font-size: 18px; font-weight: 600; color: rgba(18, 26, 46, 0.8); }
+.roster__hcp { margin-left: auto; font-size: 18px; font-weight: 600; color: var(--text-2); }
 
 .roster__group {
   background: var(--cream);
@@ -329,7 +364,7 @@ main {
 
 .chip--garrett { background: var(--red); }
 .chip--eric { background: var(--blue); }
-.chip--me { box-shadow: 0 0 0 2px var(--gold), 0 0 0 4px var(--white); }
+.chip--me { box-shadow: 0 0 0 2px var(--gold), 0 0 0 4px var(--surface); }
 
 /* Buttons */
 
@@ -342,7 +377,7 @@ main {
   padding: 0 16px;
   border: 1px solid var(--ink);
   border-radius: 3px;
-  background: var(--white);
+  background: var(--surface);
   color: var(--ink);
   text-decoration: none;
   text-transform: uppercase;
@@ -354,8 +389,8 @@ main {
 }
 
 .btn:hover { background: var(--cream); }
-.btn--solid { background: var(--navy); border-color: var(--navy); color: var(--white); }
-.btn--solid:hover { background: var(--navy-2); }
+.btn--solid { background: var(--btn-solid); border-color: var(--btn-solid); color: var(--white); }
+.btn--solid:hover { background: var(--btn-solid-hover); border-color: var(--btn-solid-hover); }
 .btn--gold { background: var(--gold); border-color: var(--gold); color: var(--navy); }
 .btn--gold:hover { filter: brightness(1.05); background: var(--gold); }
 .btn svg { width: 15px; height: 15px; flex: none; }
@@ -393,7 +428,7 @@ main {
   padding: 0 34px 0 12px;
   border: 1px solid var(--rule);
   border-radius: 3px;
-  background: var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23121a2e' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 12px center;
+  background: var(--surface) var(--select-arrow) no-repeat right 12px center;
   appearance: none;
   font-size: 16px;
   font-weight: 600;
@@ -408,7 +443,7 @@ main {
   padding: 14px 18px;
   border-radius: var(--radius);
   border-left: 4px solid var(--gold);
-  background: var(--white);
+  background: var(--surface);
   box-shadow: var(--shadow);
   margin-bottom: 22px;
 }
