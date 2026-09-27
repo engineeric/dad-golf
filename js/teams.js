@@ -39,31 +39,10 @@ function renderPanel(team, roster) {
     </section>`;
 }
 
-function renderCompare(byTeam) {
-  const stat = (label, fn) => `
-    <dt>${label}</dt>
-    ${TEAMS.map((t) => `<dd class="num fg-${t.toLowerCase()}">${formatHcp(fn(byTeam[t]))}</dd>`).join('')}`;
-  const flight = (f) => (ps) => avg(ps.filter((p) => p.flight === f));
-  return `
-    <section class="card compare">
-      <h3>Tale of the Tape</h3>
-      <dl>
-        <dt></dt>${TEAMS.map((t) => `<dd class="eyebrow head fg-${t.toLowerCase()}">${t}</dd>`).join('')}
-        ${stat('Average handicap', avg)}
-        ${stat('Flight A average', flight('A'))}
-        ${stat('Flight B average', flight('B'))}
-        ${stat('Low handicap', (ps) => Math.min(...ps.map((p) => p.hcp)))}
-        ${stat('High handicap', (ps) => Math.max(...ps.map((p) => p.hcp)))}
-      </dl>
-    </section>`;
-}
-
 try {
   const { players } = await loadData();
   const byTeam = Object.fromEntries(TEAMS.map((t) => [t, players.filter((p) => p.team === t)]));
-  app.innerHTML = `
-    <div class="teams">${TEAMS.map((t) => renderPanel(t, byTeam[t])).join('')}</div>
-    ${renderCompare(byTeam)}`;
+  app.innerHTML = `<div class="teams">${TEAMS.map((t) => renderPanel(t, byTeam[t])).join('')}</div>`;
 } catch (err) {
   showError(app, err);
 }

@@ -1,7 +1,5 @@
 // Shared page chrome and small DOM helpers.
 
-import { SHEET_URL } from './sheet.js';
-
 const PAGES = [
   { id: 'scoreboard', label: 'Scoreboard', href: 'index.html' },
   { id: 'schedule', label: 'Schedule', href: 'schedule.html' },
@@ -30,7 +28,6 @@ export function renderChrome(pageId) {
   document.querySelector('.site-footer').innerHTML = `
     <div class="site-footer__inner">
       <span class="eyebrow">The Daddy Invitational · IV</span>
-      <a class="eyebrow" href="${SHEET_URL}" target="_blank" rel="noopener">Source Sheet ↗</a>
     </div>`;
 }
 

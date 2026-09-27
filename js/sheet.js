@@ -1,7 +1,6 @@
 // Reads the "Daddy IV" Google Sheet via the public gviz CSV endpoint.
 
 export const SHEET_ID = '1e_PIxZAjMYLLzAvzeEaWkSR-L7PKB_KzsxhkDPi71oQ';
-export const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`;
 
 const DEFAULT_SETTINGS = {
   lowerPct: 0.35,
