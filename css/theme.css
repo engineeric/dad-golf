@@ -18,10 +18,10 @@
   --surface: #fff;
   --text-2: rgba(18, 26, 46, 0.8);
   --rule-strong: #121a2e;
-  --fg-garrett: #b01230;
-  --fg-eric: #0d3d94;
-  --won-garrett: rgba(176, 18, 48, 0.08);
-  --won-eric: rgba(13, 61, 148, 0.08);
+  --fg-red: #b01230;
+  --fg-blue: #0d3d94;
+  --won-red: rgba(176, 18, 48, 0.08);
+  --won-blue: rgba(13, 61, 148, 0.08);
   --btn-solid: #0d1c38;
   --btn-solid-hover: #1a2b4d;
   --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23121a2e' stroke-width='1.6'/%3E%3C/svg%3E");
@@ -45,10 +45,10 @@
     --muted: #8f98ab;
     --rule: #26344f;
     --rule-strong: #4b5b7c;
-    --fg-garrett: #ff7085;
-    --fg-eric: #8fb0ff;
-    --won-garrett: rgba(255, 90, 115, 0.13);
-    --won-eric: rgba(110, 150, 255, 0.15);
+    --fg-red: #ff7085;
+    --fg-blue: #8fb0ff;
+    --won-red: rgba(255, 90, 115, 0.13);
+    --won-blue: rgba(110, 150, 255, 0.15);
     --btn-solid: #26395f;
     --btn-solid-hover: #30466f;
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
@@ -280,10 +280,10 @@ main {
 .team-head__stat { text-align: right; }
 .team-head__stat strong { display: block; font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
 
-.bg-garrett { background: var(--red); }
-.bg-eric { background: var(--blue); }
-.fg-garrett { color: var(--fg-garrett); }
-.fg-eric { color: var(--fg-eric); }
+.bg-red { background: var(--red); }
+.bg-blue { background: var(--blue); }
+.fg-red { color: var(--fg-red); }
+.fg-blue { color: var(--fg-blue); }
 
 /* Roster rows */
 
@@ -361,8 +361,8 @@ main {
   opacity: 0.85;
 }
 
-.chip--garrett { background: var(--red); }
-.chip--eric { background: var(--blue); }
+.chip--red { background: var(--red); }
+.chip--blue { background: var(--blue); }
 .chip--me { box-shadow: 0 0 0 2px var(--gold), 0 0 0 4px var(--surface); }
 
 /* Buttons */

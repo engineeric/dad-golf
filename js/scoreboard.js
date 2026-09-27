@@ -1,9 +1,9 @@
 import { loadData } from './sheet.js';
 import {
-  TOTAL_POINTS, TO_WIN, buildDays, dayTitle, formatDate, formatHcp, formatPts, formatTime, points, teamHcp,
+  SIDES, TOTAL_POINTS, TO_WIN, buildDays, dayTitle, formatDate, formatHcp, formatPts, formatTime, points, teamHcp,
   tournamentStart,
 } from './golf.js';
-import { esc, renderChrome, showError } from './ui.js';
+import { applyEdition, esc, renderChrome, showError } from './ui.js';
 
 const REFRESH_MS = 60_000;
 
@@ -40,62 +40,62 @@ function renderCountdown() {
 }
 
 function renderBanner(pts, played, days, settings) {
-  const lead = pts.Garrett > pts.Eric ? 'Garrett' : pts.Eric > pts.Garrett ? 'Eric' : null;
-  const winner = pts.Garrett >= TO_WIN ? 'Garrett' : pts.Eric >= TO_WIN ? 'Eric' : null;
-  const score = `${formatPts(pts.Garrett)}–${formatPts(pts.Eric)}`;
+  const { teams } = settings;
+  const lead = pts.red > pts.blue ? 'red' : pts.blue > pts.red ? 'blue' : null;
+  const winner = pts.red >= TO_WIN ? 'red' : pts.blue >= TO_WIN ? 'blue' : null;
+  const score = `${formatPts(pts.red)}–${formatPts(pts.blue)}`;
   let title;
   let tint = null;
   start = null;
-  if (winner) title = `Team ${winner} Wins the Cup`;
+  if (winner) title = `Team ${teams[winner]} Wins the Cup`;
   else if (played === TOTAL_POINTS) title = `Halved ${score}`;
   else if (!played) {
     const next = tournamentStart(days, settings.timezone);
-    if (!next) title = 'The Daddy Invitational IV';
+    if (!next) title = `The Daddy Invitational ${settings.edition}`;
     else if (next.at > Date.now()) {
       start = next;
       title = `Tees Off ${formatDate(next.day.date)}${next.teeTime ? ` · ${formatTime(next.teeTime)}` : ''}`;
     } else title = `Day ${next.day.round} Underway`;
   } else if (lead) {
-    title = `Team ${lead} Leads ${lead === 'Garrett' ? score : `${formatPts(pts.Eric)}–${formatPts(pts.Garrett)}`}`;
+    const other = lead === 'red' ? 'blue' : 'red';
+    title = `Team ${teams[lead]} Leads ${formatPts(pts[lead])}–${formatPts(pts[other])}`;
     tint = lead;
   } else title = `All Square ${score}`;
-  banner.className = `banner${tint ? ` bg-${tint.toLowerCase()}` : ''}`;
+  banner.className = `banner${tint ? ` bg-${tint}` : ''}`;
   banner.innerHTML = `<h1>${esc(title)}</h1>${start ? '<div class="countdown" id="countdown" role="timer"></div>' : ''}`;
   renderCountdown();
 }
 
-function heroStatus(pts, played) {
-  if (pts.Garrett >= TO_WIN) return 'Team Garrett has clinched';
-  if (pts.Eric >= TO_WIN) return 'Team Eric has clinched';
+function heroStatus(pts, played, teams) {
+  const clinched = SIDES.find((side) => pts[side] >= TO_WIN);
+  if (clinched) return `Team ${teams[clinched]} has clinched`;
   if (played === TOTAL_POINTS) return 'All matches complete';
   if (!played) return `${TOTAL_POINTS} matches · ${TOTAL_POINTS} points`;
   return `${played} of ${TOTAL_POINTS} matches complete`;
 }
 
-function renderHero(pts, played) {
+function renderHero(pts, played, teams) {
   const pct = (n) => `${(n / TOTAL_POINTS) * 100}%`;
+  const team = (side) => `
+    <div class="hero__team hero__team--${side} bg-${side}">
+      <span class="eyebrow">Team</span>
+      <h2>${esc(teams[side])}</h2>
+      <span class="hero__pts">${formatPts(pts[side])}</span>
+    </div>`;
   return `
     <section class="card" aria-label="Overall score">
       <div class="hero">
-        <div class="hero__team bg-garrett">
-          <span class="eyebrow">Team</span>
-          <h2>Garrett</h2>
-          <span class="hero__pts">${formatPts(pts.Garrett)}</span>
-        </div>
+        ${team('red')}
         <div class="hero__mid">
           <span class="eyebrow">Points to win</span>
           <strong>${formatPts(TO_WIN)}</strong>
-          <span class="hero__status">${esc(heroStatus(pts, played))}</span>
+          <span class="hero__status">${esc(heroStatus(pts, played, teams))}</span>
         </div>
-        <div class="hero__team hero__team--eric bg-eric">
-          <span class="eyebrow">Team</span>
-          <h2>Eric</h2>
-          <span class="hero__pts">${formatPts(pts.Eric)}</span>
-        </div>
+        ${team('blue')}
       </div>
       <div class="pointsbar" aria-hidden="true">
-        <span class="g" style="width:${pct(pts.Garrett)}"></span>
-        <span class="e" style="width:${pct(pts.Eric)}"></span>
+        <span class="g" style="width:${pct(pts.red)}"></span>
+        <span class="e" style="width:${pct(pts.blue)}"></span>
       </div>
     </section>`;
 }
@@ -107,22 +107,22 @@ function sideHcp(names, players, settings) {
   return `Team HCP ${formatHcp(teamHcp(hcps[0], hcps[1], settings))}`;
 }
 
-function renderSide(team, names, match, players, settings) {
-  const state = match.winner === team ? `won--${team.toLowerCase()}` : match.winner && match.winner !== 'Halved' ? 'lost' : '';
+function renderSide(side, names, match, players, settings) {
+  const state = match.winner === side ? `won--${side}` : match.winner && match.winner !== 'Halved' ? 'lost' : '';
   const label = names.length ? names.map(esc).join('<br>') : '<span class="tba">TBD</span>';
   return `
-    <div class="side side--${team.toLowerCase()} ${state}">
+    <div class="side side--${side} ${state}">
       <span class="side__names">${label}</span>
       <span class="side__hcp num">${sideHcp(names, players, settings)}</span>
     </div>`;
 }
 
-function renderResult(m) {
+function renderResult(m, teams) {
   if (m.winner === 'Halved') {
     return `<span class="pill pill--halved">${esc(m.result || 'Halved')}</span>`;
   }
   if (m.winner) {
-    return `<span class="eyebrow">${esc(m.winner)}</span><span class="pill bg-${m.winner.toLowerCase()}">${esc(m.result || 'Won')}</span>`;
+    return `<span class="eyebrow">${esc(teams[m.winner])}</span><span class="pill bg-${m.winner}">${esc(m.result || 'Won')}</span>`;
   }
   return `<span class="eyebrow">Match ${m.number}</span><span class="pill pill--upcoming">${m.teeTime ? formatTime(m.teeTime) : 'Upcoming'}</span>`;
 }
@@ -137,9 +137,9 @@ function renderDay(day, players, settings) {
   const rows = day.matches.length
     ? day.matches.map((m) => `
         <li class="match">
-          ${renderSide('Garrett', m.garrett, m, players, settings)}
-          <div class="result">${renderResult(m)}</div>
-          ${renderSide('Eric', m.eric, m, players, settings)}
+          ${renderSide('red', m.red, m, players, settings)}
+          <div class="result">${renderResult(m, settings.teams)}</div>
+          ${renderSide('blue', m.blue, m, players, settings)}
         </li>`).join('')
     : `<li class="empty-row tba">Matchups TBA${expected ? ` · ${expected} matches` : ''}</li>`;
 
@@ -153,7 +153,7 @@ function renderDay(day, players, settings) {
         </div>
         ${played ? `
           <div class="round__score num" aria-label="Day ${day.round} score">
-            <span class="fg-garrett">${formatPts(pts.Garrett)}</span><span class="dash">|</span><span class="fg-eric">${formatPts(pts.Eric)}</span>
+            <span class="fg-red">${formatPts(pts.red)}</span><span class="dash">|</span><span class="fg-blue">${formatPts(pts.blue)}</span>
           </div>` : ''}
       </header>
       <ol class="matches">${rows}</ol>
@@ -163,6 +163,7 @@ function renderDay(day, players, settings) {
 async function refresh() {
   try {
     const data = await loadData();
+    applyEdition(data.settings.edition);
     const players = new Map(data.players.map((p) => [p.name, p]));
     const days = buildDays(data);
     const all = days.flatMap((d) => d.matches);
@@ -170,7 +171,7 @@ async function refresh() {
     const played = all.filter((m) => m.winner).length;
     renderBanner(pts, played, days, data.settings);
     app.innerHTML = `
-      ${renderHero(pts, played)}
+      ${renderHero(pts, played, data.settings.teams)}
       <div class="rounds">${days.map((d) => renderDay(d, players, data.settings)).join('')}</div>`;
   } catch (err) {
     showError(app, err);

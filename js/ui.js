@@ -10,12 +10,19 @@ const PAGES = [
 export const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
+const EDITION_KEY = 'daddy.edition';
+
+function cachedEdition() {
+  try { return localStorage.getItem(EDITION_KEY) || 'IV'; } catch { return 'IV'; }
+}
+
 export function renderChrome(pageId) {
+  const edition = cachedEdition();
   const page = PAGES.find((p) => p.id === pageId);
   document.querySelector('.site-header').innerHTML = `
     <div class="site-header__inner">
       <a class="brand" href="index.html">
-        <span class="brand__mark" aria-hidden="true">IV</span>
+        <span class="brand__mark" aria-hidden="true">${esc(edition)}</span>
         <span>
           <span class="brand__title">The Daddy Invitational</span>
           <span class="brand__sub eyebrow">${esc(page.label)}</span>
@@ -27,8 +34,18 @@ export function renderChrome(pageId) {
     </div>`;
   document.querySelector('.site-footer').innerHTML = `
     <div class="site-footer__inner">
-      <span class="eyebrow">The Daddy Invitational · IV</span>
+      <span class="eyebrow">The Daddy Invitational · <span class="edition">${esc(edition)}</span></span>
     </div>`;
+}
+
+/** Updates the edition numeral (e.g. "IV") everywhere it appears, including the favicon. */
+export function applyEdition(edition) {
+  try { localStorage.setItem(EDITION_KEY, edition); } catch { /* storage unavailable */ }
+  document.querySelectorAll('.brand__mark, .site-footer .edition').forEach((el) => { el.textContent = edition; });
+  const size = edition.length <= 2 ? 24 : Math.max(12, 48 / edition.length);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="31" fill="#0d1c38"/><circle cx="32" cy="32" r="26" fill="none" stroke="#cca65c" stroke-width="2.5"/><text x="32" y="32" dy="0.35em" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="${size}" fill="#cca65c">${esc(edition)}</text></svg>`;
+  const icon = document.querySelector('link[rel="icon"]');
+  if (icon) icon.href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
 export function showError(target, err) {
@@ -36,10 +53,8 @@ export function showError(target, err) {
   target.innerHTML = `<div class="notice notice--error"><strong>Couldn't load tournament data.</strong><br>${esc(err.message)}</div>`;
 }
 
-export const teamClass = (team) => team.toLowerCase();
-
-export function playerChip(name, team, { me, label } = {}) {
-  return `<span class="chip chip--${teamClass(team)}${me && name === me ? ' chip--me' : ''}">
+export function playerChip(name, side, { me, label } = {}) {
+  return `<span class="chip chip--${side}${me && name === me ? ' chip--me' : ''}">
     ${label ? `<small>${esc(label)}</small>` : ''}${esc(name)}
   </span>`;
 }

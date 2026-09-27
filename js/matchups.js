@@ -1,14 +1,13 @@
 import { loadData } from './sheet.js';
-import { FORMATS, formatHcp, round1, strokes, teamHcp } from './golf.js';
-import { esc, renderChrome, showError } from './ui.js';
+import { FORMATS, SIDES, formatHcp, round1, strokes, teamHcp } from './golf.js';
+import { applyEdition, esc, renderChrome, showError } from './ui.js';
 
 renderChrome('matchups');
 const app = document.getElementById('app');
 
 const MODES = ['Matched', 'Mixed'];
-const SIDES = ['Garrett', 'Eric'];
 const MATCHES = 4;
-const emptyPicks = () => Array.from({ length: MATCHES }, () => ({ Garrett: ['', ''], Eric: ['', ''] }));
+const emptyPicks = () => Array.from({ length: MATCHES }, () => ({ red: ['', ''], blue: ['', ''] }));
 
 let players = [];
 let settings;
@@ -18,10 +17,10 @@ const byName = (n) => players.find((p) => p.name === n);
 const picks = () => state.picks[state.mode];
 const slotFlight = (match, pos) => FORMATS[state.mode].slots[match][pos];
 
-// ---------- URL hash: #f=matched&p=G1a~G1b~E1a~E1b~G2a… ----------
+// ---------- URL hash: #f=matched&p=R1a~R1b~B1a~B1b~R2a… ----------
 
 function writeHash() {
-  const flat = picks().flatMap((m) => [...m.Garrett, ...m.Eric]);
+  const flat = picks().flatMap((m) => [...m.red, ...m.blue]);
   const params = new URLSearchParams({ f: state.mode.toLowerCase() });
   if (flat.some(Boolean)) params.set('p', flat.join('~'));
   history.replaceState(null, '', `#${params}`);
@@ -40,7 +39,7 @@ function readHash() {
     const side = SIDES[Math.floor((i % 4) / 2)];
     const pos = i % 2;
     const p = byName(name);
-    const valid = p && p.team === side && p.flight === slotFlight(match, pos) && !used.has(name);
+    const valid = p && p.side === side && p.flight === slotFlight(match, pos) && !used.has(name);
     if (valid) used.add(name);
     target[match][side][pos] = valid ? name : '';
   });
@@ -61,7 +60,7 @@ function randomFill() {
   const next = emptyPicks();
   for (const side of SIDES) {
     const pools = {};
-    for (const f of ['A', 'B']) pools[f] = shuffle(players.filter((p) => p.team === side && p.flight === f));
+    for (const f of ['A', 'B']) pools[f] = shuffle(players.filter((p) => p.side === side && p.flight === f));
     next.forEach((m, match) => {
       for (const pos of [0, 1]) m[side][pos] = pools[slotFlight(match, pos)].shift()?.name ?? '';
     });
@@ -80,14 +79,14 @@ function renderSelect(match, side, pos, used) {
   const flight = slotFlight(match, pos);
   const current = picks()[match][side][pos];
   const options = players
-    .filter((p) => p.team === side && p.flight === flight)
+    .filter((p) => p.side === side && p.flight === flight)
     .sort((a, b) => a.hcp - b.hcp)
     .map((p) => {
       const taken = p.name !== current && used.has(p.name);
       return `<option value="${esc(p.name)}"${p.name === current ? ' selected' : ''}${taken ? ' disabled' : ''}>${esc(p.name)} (${formatHcp(p.hcp)})${taken ? ' · taken' : ''}</option>`;
     }).join('');
   return `
-    <label class="visually-hidden" for="s-${match}-${side}-${pos}">Team ${side} match ${match + 1} player ${pos + 1} (Flight ${flight})</label>
+    <label class="visually-hidden" for="s-${match}-${side}-${pos}">Team ${esc(settings.teams[side])} match ${match + 1} player ${pos + 1} (Flight ${flight})</label>
     <select class="select" id="s-${match}-${side}-${pos}" data-match="${match}" data-side="${side}" data-pos="${pos}">
       <option value="">Flight ${flight} player…</option>${options}
     </select>`;
@@ -95,14 +94,14 @@ function renderSelect(match, side, pos, used) {
 
 function renderMatch(match, used) {
   const m = picks()[match];
-  const hcp = { Garrett: pairHcp(m.Garrett), Eric: pairHcp(m.Eric) };
-  const complete = hcp.Garrett != null && hcp.Eric != null;
-  const diff = complete ? strokes(hcp.Garrett, hcp.Eric) : 0;
-  const receiver = complete && diff ? (hcp.Garrett > hcp.Eric ? 'Garrett' : 'Eric') : null;
+  const hcp = { red: pairHcp(m.red), blue: pairHcp(m.blue) };
+  const complete = hcp.red != null && hcp.blue != null;
+  const diff = complete ? strokes(hcp.red, hcp.blue) : 0;
+  const receiver = complete && diff ? (hcp.red > hcp.blue ? 'red' : 'blue') : null;
   const verdict = !complete
     ? '<div class="mcard__foot tba">Select all four players</div>'
     : receiver
-      ? `<div class="mcard__foot">Team ${receiver} gets <span class="num">${diff}</span> stroke${diff === 1 ? '' : 's'}</div>`
+      ? `<div class="mcard__foot">Team ${esc(settings.teams[receiver])} gets <span class="num">${diff}</span> stroke${diff === 1 ? '' : 's'}</div>`
       : '<div class="mcard__foot">Even match · no strokes</div>';
 
   return `
@@ -113,8 +112,8 @@ function renderMatch(match, used) {
       </header>
       <div class="mcard__body">
         ${SIDES.map((side) => `
-          <div class="pair pair--${side.toLowerCase()}">
-            <span class="pair__label eyebrow fg-${side.toLowerCase()}">Team ${side}</span>
+          <div class="pair pair--${side}">
+            <span class="pair__label eyebrow fg-${side}">Team ${esc(settings.teams[side])}</span>
             ${renderSelect(match, side, 0, used)}
             ${renderSelect(match, side, 1, used)}
             <div class="pair__hcp">
@@ -128,13 +127,13 @@ function renderMatch(match, used) {
 }
 
 function render() {
-  const used = new Set(picks().flatMap((m) => [...m.Garrett, ...m.Eric]).filter(Boolean));
-  const totals = { Garrett: 0, Eric: 0 };
+  const used = new Set(picks().flatMap((m) => [...m.red, ...m.blue]).filter(Boolean));
+  const totals = { red: 0, blue: 0 };
   let complete = 0;
   for (const m of picks()) {
-    const g = pairHcp(m.Garrett);
-    const e = pairHcp(m.Eric);
-    if (g != null && e != null) { totals.Garrett += g; totals.Eric += e; complete++; }
+    const r = pairHcp(m.red);
+    const b = pairHcp(m.blue);
+    if (r != null && b != null) { totals.red += r; totals.blue += b; complete++; }
   }
   const pct = (n) => `${Math.round(n * 100)}%`;
 
@@ -151,9 +150,9 @@ function render() {
       </div>
     </div>
     <section class="card summary" aria-label="Lineup totals">
-      <div class="g bg-garrett"><span class="eyebrow">Garrett total</span><strong>${complete ? formatHcp(round1(totals.Garrett)) : '—'}</strong></div>
+      <div class="g bg-red"><span class="eyebrow">${esc(settings.teams.red)} total</span><strong>${complete ? formatHcp(round1(totals.red)) : '—'}</strong></div>
       <div class="mid"><span class="eyebrow">${FORMATS[state.mode].sub}</span><br><span class="num">${complete} of ${MATCHES}</span> matches set</div>
-      <div class="e bg-eric"><span class="eyebrow">Eric total</span><strong>${complete ? formatHcp(round1(totals.Eric)) : '—'}</strong></div>
+      <div class="e bg-blue"><span class="eyebrow">${esc(settings.teams.blue)} total</span><strong>${complete ? formatHcp(round1(totals.blue)) : '—'}</strong></div>
     </section>
     <div class="grid">${picks().map((_, i) => renderMatch(i, used)).join('')}</div>`;
 }
@@ -198,6 +197,7 @@ window.addEventListener('hashchange', () => {
 
 try {
   ({ players, settings } = await loadData());
+  applyEdition(settings.edition);
   readHash();
   writeHash();
   render();

@@ -1,13 +1,13 @@
 import { loadData } from './sheet.js';
-import { CAPTAINS, TEAMS, formatHcp, round1 } from './golf.js';
-import { esc, renderChrome, showError } from './ui.js';
+import { SIDES, formatHcp, round1 } from './golf.js';
+import { applyEdition, esc, renderChrome, showError } from './ui.js';
 
 renderChrome('teams');
 const app = document.getElementById('app');
 
 const avg = (ps) => (ps.length ? round1(ps.reduce((s, p) => s + p.hcp, 0) / ps.length) : null);
 
-function renderPanel(team, roster) {
+function renderPanel(side, teamName, roster) {
   const flights = [...new Set(roster.map((p) => p.flight))].sort();
   let slot = 0;
   const rows = flights.map((f) => {
@@ -18,17 +18,17 @@ function renderPanel(team, roster) {
         <li>
           <span class="roster__slot num">${String(++slot).padStart(2, '0')}</span>
           <span class="roster__name">${esc(p.name)}</span>
-          ${CAPTAINS[team] === p.name ? '<span class="roster__tag eyebrow">Captain</span>' : ''}
+          ${p.captain ? '<span class="roster__tag eyebrow">Captain</span>' : ''}
           <span class="roster__hcp num">${formatHcp(p.hcp)}</span>
         </li>`).join('')}`;
   }).join('');
 
   return `
     <section class="card">
-      <div class="team-head bg-${team.toLowerCase()}">
+      <div class="team-head bg-${side}">
         <div>
           <span class="eyebrow">${roster.length} Players</span>
-          <h2>Team ${esc(team)}</h2>
+          <h2>Team ${esc(teamName)}</h2>
         </div>
         <div class="team-head__stat">
           <strong>${formatHcp(avg(roster))}</strong>
@@ -40,9 +40,10 @@ function renderPanel(team, roster) {
 }
 
 try {
-  const { players } = await loadData();
-  const byTeam = Object.fromEntries(TEAMS.map((t) => [t, players.filter((p) => p.team === t)]));
-  app.innerHTML = `<div class="teams">${TEAMS.map((t) => renderPanel(t, byTeam[t])).join('')}</div>`;
+  const { players, settings } = await loadData();
+  applyEdition(settings.edition);
+  app.innerHTML = `<div class="teams">${SIDES.map((side) =>
+    renderPanel(side, settings.teams[side], players.filter((p) => p.side === side))).join('')}</div>`;
 } catch (err) {
   showError(app, err);
 }

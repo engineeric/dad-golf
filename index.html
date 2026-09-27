@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Scoreboard · The Daddy Invitational</title>
-  <meta name="description" content="Live scoreboard for The Daddy Invitational IV — Team Garrett vs. Team Eric.">
+  <meta name="description" content="Live scoreboard for The Daddy Invitational.">
   <meta name="theme-color" content="#0d1c38">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/theme.css">
   <style>
     .banner { transition: background-color 0.3s; }
-    .banner.bg-garrett, .banner.bg-eric { border-bottom-color: transparent; }
-    .banner.bg-garrett h1, .banner.bg-eric h1 { color: var(--white); }
+    .banner.bg-red, .banner.bg-blue { border-bottom-color: transparent; }
+    .banner.bg-red h1, .banner.bg-blue h1 { color: var(--white); }
 
     .countdown { display: flex; justify-content: center; gap: 10px; margin-top: 14px; }
     .countdown div {
@@ -35,7 +35,7 @@
       flex-direction: column;
       gap: 2px;
     }
-    .hero__team--eric { text-align: right; align-items: flex-end; }
+    .hero__team--blue { text-align: right; align-items: flex-end; }
     .hero__team h2 { margin: 0; font-family: var(--serif); font-size: 30px; line-height: 1.1; }
     .hero__pts { font-size: 84px; font-weight: 800; line-height: 1; margin-top: 10px; font-variant-numeric: tabular-nums; }
     .hero__mid {
@@ -98,11 +98,11 @@
     }
     .match:first-child { border-top: 0; }
     .side { padding: 14px 20px; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
-    .side--eric { text-align: right; }
+    .side--blue { text-align: right; }
     .side__names { font-size: 17px; font-weight: 600; }
     .side__hcp { font-size: 12px; color: var(--muted); }
-    .side.won--garrett { background: var(--won-garrett); box-shadow: inset 4px 0 var(--red); }
-    .side.won--eric { background: var(--won-eric); box-shadow: inset -4px 0 var(--blue); }
+    .side.won--red { background: var(--won-red); box-shadow: inset 4px 0 var(--red); }
+    .side.won--blue { background: var(--won-blue); box-shadow: inset -4px 0 var(--blue); }
     .side.lost .side__names { color: var(--muted); font-weight: 500; }
 
     .result { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 10px 6px; text-align: center; }

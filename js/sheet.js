@@ -3,6 +3,7 @@
 export const SHEET_ID = '1e_PIxZAjMYLLzAvzeEaWkSR-L7PKB_KzsxhkDPi71oQ';
 
 const DEFAULT_SETTINGS = {
+  edition: 'IV',
   lowerPct: 0.35,
   higherPct: 0.15,
   timezone: 'America/Chicago',
@@ -63,10 +64,17 @@ const pct = (v) => {
   return String(v).includes('%') || n > 1 ? n / 100 : n;
 };
 
-const TEAMS = { eric: 'Eric', garrett: 'Garrett' };
-const team = (v) => TEAMS[key(v)] ?? null;
+const HALVED = new Set(['halved', 'halve', 'tie', 'tied', 'as']);
+const truthy = (v) => /^(true|yes|y|x|1|✓|✔)$/i.test(String(v).trim());
 
-const WINNERS = { eric: 'Eric', garrett: 'Garrett', halved: 'Halved', halve: 'Halved', tie: 'Halved', tied: 'Halved', as: 'Halved' };
+/** Maps a team name (or "Red"/"Blue") to its side. */
+const sideOf = (v, teams) => {
+  const k = key(v);
+  if (!k) return null;
+  if (k === key(teams.red) || k === 'red') return 'red';
+  if (k === key(teams.blue) || k === 'blue') return 'blue';
+  return null;
+};
 
 const FORMATS = { matched: 'Matched', mixed: 'Mixed', singles: 'Singles' };
 
@@ -97,18 +105,19 @@ export function parseDate(v) {
   return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() };
 }
 
-function normalizePlayers(rows) {
-  return (rows ?? [])
+function normalizePlayers(rows, teams) {
+  return rows
     .map((r) => ({
       name: r.name,
       hcp: num(r.handicapindex ?? r.handicap ?? r.hcp),
-      team: team(r.team),
+      side: sideOf(r.team, teams),
       flight: (r.flight || '').toUpperCase(),
+      captain: truthy(r.captain),
     }))
-    .filter((p) => p.name && p.team && p.hcp != null);
+    .filter((p) => p.name && p.side && p.hcp != null);
 }
 
-function normalizeMatches(rows) {
+function normalizeMatches(rows, teams) {
   return (rows ?? [])
     .map((r, i) => {
       const time = parseTime(r.teetime);
@@ -116,9 +125,9 @@ function normalizeMatches(rows) {
         row: i,
         round: num(r.round),
         teeTime: time,
-        eric: [r.eric1, r.eric2].filter(Boolean),
-        garrett: [r.garrett1, r.garrett2].filter(Boolean),
-        winner: WINNERS[key(r.winner)] ?? null,
+        red: [r.red1, r.red2].filter(Boolean),
+        blue: [r.blue1, r.blue2].filter(Boolean),
+        winner: HALVED.has(key(r.winner)) ? 'Halved' : sideOf(r.winner, teams),
         result: r.result || '',
       };
     })
@@ -144,9 +153,16 @@ function normalizeSchedule(rows) {
     .filter((d) => d.round != null);
 }
 
-function normalizeSettings(rows) {
+/**
+ * Team names come from Settings ("Red Team" / "Blue Team"); without them, the
+ * first two teams listed in Players are used, in order of appearance.
+ */
+function normalizeSettings(rows, playerRows) {
   const r = rows?.[0] ?? {};
+  const listed = [...new Set(playerRows.map((p) => p.team).filter(Boolean))];
   return {
+    edition: r.edition || DEFAULT_SETTINGS.edition,
+    teams: { red: r.redteam || listed[0] || 'Red', blue: r.blueteam || listed[1] || 'Blue' },
     lowerPct: pct(r.lower ?? r.lowerpct ?? r.lowerhcp) ?? DEFAULT_SETTINGS.lowerPct,
     higherPct: pct(r.higher ?? r.higherpct ?? r.higherhcp) ?? DEFAULT_SETTINGS.higherPct,
     timezone: r.timezone || DEFAULT_SETTINGS.timezone,
@@ -157,15 +173,16 @@ function normalizeSettings(rows) {
 export async function loadData() {
   const [players, matches, schedule, settings] = await Promise.all([
     fetchTab('Players', ['name', 'team', 'flight']),
-    fetchTab('Matches', ['round', 'eric1', 'garrett1', 'winner']),
+    fetchTab('Matches', ['round', 'red1', 'blue1', 'winner']),
     fetchTab('Schedule', ['round', 'format', 'course']),
     fetchTab('Settings', ['timezone']),
   ]);
   if (!players) throw new Error('The "Players" tab is missing from the sheet.');
+  const normalizedSettings = normalizeSettings(settings, players);
   return {
-    players: normalizePlayers(players),
-    matches: normalizeMatches(matches),
+    players: normalizePlayers(players, normalizedSettings.teams),
+    matches: normalizeMatches(matches ?? [], normalizedSettings.teams),
     schedule: normalizeSchedule(schedule),
-    settings: normalizeSettings(settings),
+    settings: normalizedSettings,
   };
 }

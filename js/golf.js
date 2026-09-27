@@ -1,7 +1,7 @@
 // Tournament rules: team handicaps, formats and scoring.
 
-export const TEAMS = ['Garrett', 'Eric'];
-export const CAPTAINS = { Garrett: 'Garrett', Eric: 'Eric' };
+/** Display order and colours; team names for each side come from Settings. */
+export const SIDES = ['red', 'blue'];
 export const TOTAL_POINTS = 16;
 export const TO_WIN = TOTAL_POINTS / 2 + 0.5;
 export const DAYS = 3;
@@ -26,9 +26,9 @@ export function teamHcp(a, b, settings) {
 export const strokes = (a, b) => Math.round(Math.abs(round1(a) - round1(b)));
 
 export function points(matches) {
-  const pts = { Garrett: 0, Eric: 0 };
+  const pts = { red: 0, blue: 0 };
   for (const m of matches) {
-    if (m.winner === 'Halved') { pts.Garrett += 0.5; pts.Eric += 0.5; }
+    if (m.winner === 'Halved') { pts.red += 0.5; pts.blue += 0.5; }
     else if (m.winner) pts[m.winner] += 1;
   }
   return pts;
@@ -37,7 +37,7 @@ export function points(matches) {
 /** Infers a format from entered matches when the Schedule row doesn't say. */
 function inferFormat(matches) {
   if (!matches.length) return null;
-  return matches.every((m) => m.eric.length <= 1 && m.garrett.length <= 1) ? 'Singles' : null;
+  return matches.every((m) => m.red.length <= 1 && m.blue.length <= 1) ? 'Singles' : null;
 }
 
 /** Merges Schedule rows and Matches into one entry per day, always DAYS long. */

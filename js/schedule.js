@@ -1,7 +1,7 @@
 import { loadData } from './sheet.js';
 import { buildDays, dayTitle, formatDate, formatTime, teeGroups } from './golf.js';
 import { buildEvent, downloadICS, googleCalendarUrl } from './calendar.js';
-import { ICONS, esc, playerChip, renderChrome, showError } from './ui.js';
+import { applyEdition, ICONS, esc, playerChip, renderChrome, showError } from './ui.js';
 
 renderChrome('schedule');
 const app = document.getElementById('app');
@@ -22,7 +22,7 @@ const googleDirections = (q) => `https://www.google.com/maps/dir/?api=1&destinat
 const appleDirections = (q) => `https://maps.apple.com/?daddr=${encodeURIComponent(q)}`;
 const mapEmbed = (q) => `https://www.google.com/maps?q=${encodeURIComponent(q)}&output=embed`;
 
-const groupHas = (group, name) => group.matches.some((m) => m.eric.includes(name) || m.garrett.includes(name));
+const groupHas = (group, name) => group.matches.some((m) => m.red.includes(name) || m.blue.includes(name));
 
 // ---------- Calendar ----------
 
@@ -42,12 +42,12 @@ function eventFor(day) {
     mine?.teeTime ? `${me}'s tee time: ${formatTime(mine.teeTime)}` : null,
     groups.some((g) => g.teeTime) ? '' : null,
     ...groups.filter((g) => g.teeTime).map((g) =>
-      `${formatTime(g.teeTime)}: ${g.matches.map((m) => `${m.garrett.join(' & ') || 'TBD'} vs ${m.eric.join(' & ') || 'TBD'}`).join(' | ')}`),
+      `${formatTime(g.teeTime)}: ${g.matches.map((m) => `${m.red.join(' & ') || 'TBD'} vs ${m.blue.join(' & ') || 'TBD'}`).join(' | ')}`),
     '',
     `${location.origin}${location.pathname}#day-${day.round}`,
   ].filter((l) => l != null);
   return buildEvent({
-    uid: `daddy-iv-day-${day.round}@daddyinvitational`,
+    uid: `daddy-${data.settings.edition.toLowerCase()}-day-${day.round}@daddyinvitational`,
     title: `Daddy Invitational · Day ${day.round}${day.formatInfo ? `: ${day.formatInfo.title}` : ''}`,
     date: day.date,
     teeTime,
@@ -88,9 +88,9 @@ function renderTeeSheet(day) {
           ${g.matches.map((m) => `
             <div class="tee__match">
               <span class="label eyebrow">Match ${m.number}</span>
-              ${m.garrett.map((n) => playerChip(n, 'Garrett', { me })).join('') || '<span class="tba">TBD</span>'}
+              ${m.red.map((n) => playerChip(n, 'red', { me })).join('') || '<span class="tba">TBD</span>'}
               <span class="vs eyebrow">vs</span>
-              ${m.eric.map((n) => playerChip(n, 'Eric', { me })).join('') || '<span class="tba">TBD</span>'}
+              ${m.blue.map((n) => playerChip(n, 'blue', { me })).join('') || '<span class="tba">TBD</span>'}
             </div>`).join('')}
         </div>
       </div>`;
@@ -216,6 +216,7 @@ app.addEventListener('click', async (e) => {
 
 try {
   data = await loadData();
+  applyEdition(data.settings.edition);
   days = buildDays(data);
   if (me && !data.players.some((p) => p.name === me)) me = '';
   render();
