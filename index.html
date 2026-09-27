@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scoreboard · The Daddy Invitational</title>
+  <meta name="description" content="Live scoreboard for The Daddy Invitational IV — Team Garrett vs. Team Eric.">
+  <meta name="theme-color" content="#0d1c38">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/theme.css">
+  <style>
+    .banner { transition: background-color 0.3s; }
+    .banner.bg-garrett, .banner.bg-eric { border-bottom-color: transparent; }
+    .banner.bg-garrett h1, .banner.bg-eric h1 { color: var(--white); }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr minmax(180px, 0.8fr) 1fr;
+    }
+    .hero__team {
+      padding: 22px 26px;
+      color: var(--white);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .hero__team--eric { text-align: right; align-items: flex-end; }
+    .hero__team h2 { margin: 0; font-family: var(--serif); font-size: 30px; line-height: 1.1; }
+    .hero__pts { font-size: 84px; font-weight: 800; line-height: 1; margin-top: 10px; font-variant-numeric: tabular-nums; }
+    .hero__mid {
+      background: var(--navy);
+      color: var(--white);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 6px;
+      padding: 18px;
+    }
+    .hero__mid .eyebrow { color: rgba(255, 255, 255, 0.7); font-size: 10px; }
+    .hero__mid strong { font-family: var(--serif); font-size: 44px; color: var(--gold); line-height: 1; }
+    .hero__status { font-size: 13px; color: rgba(255, 255, 255, 0.85); max-width: 22ch; }
+
+    .pointsbar {
+      position: relative;
+      height: 14px;
+      background: var(--navy-2);
+    }
+    .pointsbar span { position: absolute; top: 0; bottom: 0; transition: width 0.6s; }
+    .pointsbar .g { left: 0; background: var(--red); }
+    .pointsbar .e { right: 0; background: var(--blue); }
+    .pointsbar::after {
+      content: "";
+      position: absolute;
+      left: calc(50% - 1px);
+      top: -4px;
+      bottom: -4px;
+      width: 2px;
+      background: var(--gold);
+    }
+
+    .rounds { display: grid; gap: 22px; margin-top: 26px; }
+
+    .round__head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 16px;
+      padding: 16px 20px;
+      border-bottom: 2px solid var(--ink);
+    }
+    .round__head h2 { margin: 4px 0 2px; font-family: var(--serif); font-size: 24px; }
+    .round__head .eyebrow { color: var(--muted); }
+    .round__course { font-size: 14px; color: var(--muted); }
+    .round__course a { color: var(--ink); font-weight: 600; text-decoration: none; }
+    .round__course a:hover { text-decoration: underline; }
+    .round__score { display: flex; gap: 14px; align-items: baseline; font-weight: 800; font-size: 26px; white-space: nowrap; }
+    .round__score .dash { color: var(--rule); font-weight: 400; }
+
+    .matches { list-style: none; margin: 0; padding: 0; }
+    .match {
+      display: grid;
+      grid-template-columns: 1fr 150px 1fr;
+      align-items: stretch;
+      border-top: 1px solid var(--rule);
+    }
+    .match:first-child { border-top: 0; }
+    .side { padding: 14px 20px; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+    .side--eric { text-align: right; }
+    .side__names { font-size: 17px; font-weight: 600; }
+    .side__hcp { font-size: 12px; color: var(--muted); }
+    .side.won--garrett { background: rgba(176, 18, 48, 0.08); box-shadow: inset 4px 0 var(--red); }
+    .side.won--eric { background: rgba(13, 61, 148, 0.08); box-shadow: inset -4px 0 var(--blue); }
+    .side.lost .side__names { color: var(--muted); font-weight: 500; }
+
+    .result { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 10px 6px; text-align: center; }
+    .result .eyebrow { font-size: 9px; color: var(--muted); }
+    .pill {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 3px;
+      color: var(--white);
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    .pill--halved { background: var(--gold); color: var(--navy); }
+    .pill--upcoming { background: var(--cream); color: var(--ink); font-weight: 700; }
+    .empty-row { padding: 22px 20px; text-align: center; }
+
+    @media (max-width: 720px) {
+      .hero { grid-template-columns: 1fr 1fr; }
+      .hero__mid { grid-column: 1 / -1; grid-row: 2; flex-direction: row; justify-content: center; gap: 12px; padding: 12px; }
+      .hero__mid strong { font-size: 28px; }
+      .hero__status { max-width: none; }
+      .hero__team { padding: 16px; }
+      .hero__team h2 { font-size: 22px; }
+      .hero__pts { font-size: 60px; }
+      .round__head { flex-direction: column; align-items: flex-start; }
+      .match { grid-template-columns: 1fr 76px 1fr; }
+      .side { padding: 12px 10px; }
+      .side__names { font-size: 14px; }
+      .pill { font-size: 11px; padding: 4px 7px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header"></header>
+  <div class="banner" id="banner"><h1>The Daddy Invitational</h1></div>
+  <main id="app"><div class="loading">Loading scoreboard…</div></main>
+  <footer class="site-footer"></footer>
+  <script type="module" src="js/scoreboard.js"></script>
+</body>
+</html>

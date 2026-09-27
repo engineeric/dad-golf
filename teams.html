@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Teams · The Daddy Invitational</title>
+  <meta name="description" content="Team Garrett and Team Eric rosters for The Daddy Invitational IV.">
+  <meta name="theme-color" content="#0d1c38">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/theme.css">
+  <style>
+    .teams {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 22px;
+      align-items: start;
+    }
+    .compare {
+      margin-top: 22px;
+      padding: 18px 20px;
+    }
+    .compare h3 { margin: 0 0 12px; font-family: var(--serif); font-size: 18px; }
+    .compare dl { margin: 0; display: grid; grid-template-columns: 1fr auto auto; gap: 8px 18px; align-items: baseline; }
+    .compare dt { color: var(--muted); font-size: 14px; }
+    .compare dd { margin: 0; font-weight: 700; font-size: 18px; text-align: right; }
+    .compare .head { font-size: 10px; }
+    @media (max-width: 900px) {
+      .teams { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header"></header>
+  <div class="banner"><h1>The Rosters</h1></div>
+  <main id="app"><div class="loading">Loading rosters…</div></main>
+  <footer class="site-footer"></footer>
+  <script type="module" src="js/teams.js"></script>
+</body>
+</html>

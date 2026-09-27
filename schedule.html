@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Schedule · The Daddy Invitational</title>
+  <meta name="description" content="Courses, tee times, directions and calendar events for The Daddy Invitational IV.">
+  <meta name="theme-color" content="#0d1c38">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/theme.css">
+  <style>
+    .findme {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 20px;
+      margin-bottom: 22px;
+    }
+    .findme label { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 260px; }
+    .findme .select { max-width: 320px; }
+
+    .day { scroll-margin-top: 16px; }
+    .day__head {
+      background: var(--navy);
+      color: var(--white);
+      padding: 18px 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 16px;
+      flex-wrap: wrap;
+      border-bottom: 3px solid var(--gold);
+    }
+    .day__head .eyebrow { color: var(--gold); }
+    .day__head h2 { margin: 4px 0 2px; font-family: var(--serif); font-size: 28px; }
+    .day__head .sub { color: rgba(255, 255, 255, 0.7); font-size: 14px; }
+    .day__head .btn { background: transparent; color: var(--white); border-color: rgba(255, 255, 255, 0.7); }
+    .day__head .btn:hover { background: var(--navy-2); }
+    .day__head .btn--gold { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+    .day__head .btn--gold:hover { background: var(--gold); }
+
+    .day__body { display: grid; grid-template-columns: 1fr 1fr; }
+    .course { padding: 20px 22px; display: grid; gap: 14px; align-content: start; }
+    .course h3 { margin: 2px 0 0; font-family: var(--serif); font-size: 26px; line-height: 1.15; }
+    .course h3 a { text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+    .course h3 a:hover { text-decoration: underline; }
+    .course h3 svg { width: 16px; height: 16px; color: var(--muted); }
+    .course .eyebrow { color: var(--muted); font-size: 10px; }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--rule); border-radius: 3px; }
+    .stats div { padding: 10px 12px; }
+    .stats div + div { border-left: 1px solid var(--rule); }
+    .stats strong { display: block; font-size: 18px; margin-top: 2px; }
+    .address { font-size: 15px; }
+    .notes { font-size: 15px; background: var(--cream); padding: 10px 12px; border-radius: 3px; margin: 0; white-space: pre-line; }
+
+    .map { min-height: 300px; background: var(--cream); border-left: 1px solid var(--rule); position: relative; }
+    .map iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+    .map .tba { position: absolute; inset: 0; display: grid; place-items: center; }
+
+    .teesheet { border-top: 2px solid var(--ink); }
+    .teesheet__head { display: flex; justify-content: space-between; padding: 12px 22px; }
+    .teesheet__head .eyebrow { color: var(--muted); }
+    .tee {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 16px;
+      align-items: center;
+      padding: 12px 22px;
+      border-top: 1px solid var(--rule);
+    }
+    .tee.mine { background: rgba(204, 166, 92, 0.14); box-shadow: inset 4px 0 var(--gold); }
+    .tee__time { font-family: var(--serif); font-weight: 700; font-size: 22px; }
+    .tee__time small { display: block; font-family: var(--sans); color: var(--gold); font-size: 9px; margin-top: 2px; }
+    .tee__matches { display: grid; gap: 8px; }
+    .tee__match { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .tee__match .vs { color: var(--muted); font-size: 10px; margin: 0 4px; }
+    .tee__match .label { color: var(--muted); font-size: 9px; width: 62px; flex: none; }
+    .empty { padding: 18px 22px; border-top: 1px solid var(--rule); }
+
+    dialog {
+      border: 0;
+      border-radius: 6px;
+      padding: 0;
+      max-width: min(560px, calc(100vw - 32px));
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    }
+    dialog::backdrop { background: rgba(13, 28, 56, 0.6); }
+    .qr__head { background: var(--navy); color: var(--white); padding: 16px 20px; border-bottom: 3px solid var(--gold); }
+    .qr__head h2 { margin: 4px 0 0; font-family: var(--serif); font-size: 22px; }
+    .qr__head .eyebrow { color: var(--gold); }
+    .qr__body { padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: center; }
+    .qr__body svg { width: 100%; height: auto; display: block; }
+    .qr__body p { margin: 8px 0 0; }
+    .qr__foot { padding: 0 20px 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+
+    @media (max-width: 900px) {
+      .day__body { grid-template-columns: 1fr; }
+      .map { border-left: 0; border-top: 1px solid var(--rule); min-height: 240px; }
+    }
+    @media (max-width: 720px) {
+      .day__head, .course { padding: 16px; }
+      .tee { grid-template-columns: 1fr; gap: 8px; padding: 12px 16px; }
+      .teesheet__head { padding: 12px 16px; }
+      .tee__match .label { width: 100%; }
+      .chip { font-size: 13px; }
+      .findme .select { max-width: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header"></header>
+  <div class="banner"><h1>Schedule</h1></div>
+  <main id="app"><div class="loading">Loading schedule…</div></main>
+  <footer class="site-footer"></footer>
+
+  <dialog id="qr" aria-labelledby="qr-title">
+    <div class="qr__head">
+      <span class="eyebrow">Scan with your phone's camera</span>
+      <h2 id="qr-title">Directions</h2>
+    </div>
+    <div class="qr__body"></div>
+    <div class="qr__foot">
+      <span class="muted"></span>
+      <button class="btn btn--solid" data-close>Close</button>
+    </div>
+  </dialog>
+
+  <script src="js/vendor/qrcode.js"></script>
+  <script type="module" src="js/schedule.js"></script>
+</body>
+</html>
