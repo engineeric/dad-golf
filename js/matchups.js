@@ -12,6 +12,7 @@ const emptyPicks = () => Array.from({ length: MATCHES }, () => ({ red: ['', ''],
 let players = [];
 let settings;
 const state = { mode: 'Matched', picks: { Matched: emptyPicks(), Mixed: emptyPicks() } };
+let helpOpen = false; // survives re-renders
 
 const byName = (n) => players.find((p) => p.name === n);
 const picks = () => state.picks[state.mode];
@@ -138,7 +139,10 @@ function render() {
   const pct = (n) => `${Math.round(n * 100)}%`;
 
   app.innerHTML = `
-    <p class="intro">Build a lineup for either 2v2 round to see team handicaps and strokes. Team handicap is ${pct(settings.lowerPct)} of the lower handicap plus ${pct(settings.higherPct)} of the higher. This is a preview only; official matchups are posted on the Schedule.</p>
+    <details class="help"${helpOpen ? ' open' : ''}>
+      <summary class="eyebrow">How it works</summary>
+      <p>Build a lineup for either 2v2 round to see team handicaps and strokes. Team handicap is ${pct(settings.lowerPct)} of the lower handicap plus ${pct(settings.higherPct)} of the higher. This is a preview only; official matchups are posted on the Schedule.</p>
+    </details>
     <div class="toolbar">
       <div class="segmented" role="group" aria-label="Format">
         ${MODES.map((m) => `<button class="eyebrow" data-mode="${m}" aria-pressed="${m === state.mode}">${FORMATS[m].title}</button>`).join('')}
@@ -158,6 +162,11 @@ function render() {
 }
 
 // ---------- Events ----------
+
+// toggle doesn't bubble, so listen in the capture phase.
+app.addEventListener('toggle', (e) => {
+  if (e.target.matches('details.help')) helpOpen = e.target.open;
+}, true);
 
 app.addEventListener('change', (e) => {
   const s = e.target.closest('select[data-match]');

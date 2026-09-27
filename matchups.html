@@ -17,7 +17,33 @@
       gap: 12px;
       margin-bottom: 18px;
     }
-    .intro { margin: 0 0 18px; color: var(--muted); max-width: 70ch; font-size: 15px; }
+    .help { margin: 0 0 14px; }
+    .help summary {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 10px;
+      cursor: pointer;
+      list-style: none;
+    }
+    .help summary::-webkit-details-marker { display: none; }
+    .help summary::before {
+      content: "i";
+      display: inline-grid;
+      place-items: center;
+      width: 16px;
+      height: 16px;
+      border: 1.5px solid currentColor;
+      border-radius: 50%;
+      font-family: var(--serif);
+      font-style: italic;
+      font-size: 11px;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+    .help summary:hover, .help[open] summary { color: var(--ink); }
+    .help p { margin: 8px 0 0; color: var(--muted); max-width: 70ch; font-size: 15px; }
 
     .summary {
       display: grid;
