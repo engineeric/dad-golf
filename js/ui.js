@@ -43,7 +43,7 @@ export function applyEdition(edition) {
   try { localStorage.setItem(EDITION_KEY, edition); } catch { /* storage unavailable */ }
   document.querySelectorAll('.brand__mark, .site-footer .edition').forEach((el) => { el.textContent = edition; });
   const size = edition.length <= 2 ? 24 : Math.max(12, 48 / edition.length);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="31" fill="#0d1c38"/><circle cx="32" cy="32" r="26" fill="none" stroke="#cca65c" stroke-width="2.5"/><text x="32" y="32" dy="0.35em" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="${size}" fill="#cca65c">${esc(edition)}</text></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="29" fill="none" stroke="#cca65c" stroke-width="3.5"/><text x="32" y="32" dy="0.35em" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="${size}" fill="#cca65c">${esc(edition)}</text></svg>`;
   const icon = document.querySelector('link[rel="icon"]');
   if (icon) icon.href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
