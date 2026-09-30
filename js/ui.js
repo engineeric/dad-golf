@@ -1,5 +1,7 @@
 // Shared page chrome and small DOM helpers.
 
+import { DEMO } from './sheet.js';
+
 const PAGES = [
   { id: 'scoreboard', label: 'Scoreboard', href: 'index.html' },
   { id: 'schedule', label: 'Schedule', href: 'schedule.html' },
@@ -16,12 +18,19 @@ function cachedEdition() {
   try { return localStorage.getItem(EDITION_KEY) || 'IV'; } catch { return 'IV'; }
 }
 
+/** Keeps ?demo=… on internal links so demo mode survives navigation. */
+export function withDemo(href) {
+  if (!DEMO) return href;
+  const [path, hash] = href.split('#');
+  return `${path}?demo=${encodeURIComponent(DEMO)}${hash ? `#${hash}` : ''}`;
+}
+
 export function renderChrome(pageId) {
   const edition = cachedEdition();
   const page = PAGES.find((p) => p.id === pageId);
   document.querySelector('.site-header').innerHTML = `
     <div class="site-header__inner">
-      <a class="brand" href="index.html">
+      <a class="brand" href="${withDemo('index.html')}">
         <span class="brand__mark" aria-hidden="true">${esc(edition)}</span>
         <span>
           <span class="brand__title">The Daddy Invitational</span>
@@ -29,9 +38,10 @@ export function renderChrome(pageId) {
         </span>
       </a>
       <nav class="nav" aria-label="Site">
-        ${PAGES.map((p) => `<a class="eyebrow" href="${p.href}"${p.id === pageId ? ' aria-current="page"' : ''}>${p.label}</a>`).join('')}
+        ${PAGES.map((p) => `<a class="eyebrow" href="${withDemo(p.href)}"${p.id === pageId ? ' aria-current="page"' : ''}>${p.label}</a>`).join('')}
       </nav>
-    </div>`;
+    </div>
+    ${DEMO ? `<div class="demo-bar eyebrow">Demo data · ${esc(DEMO)} · <a href="${location.pathname}">Exit demo</a></div>` : ''}`;
   document.querySelector('.site-footer').innerHTML = `
     <div class="site-footer__inner">
       <span class="eyebrow">The Daddy Invitational · <span class="edition">${esc(edition)}</span></span>

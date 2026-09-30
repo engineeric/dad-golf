@@ -3,7 +3,7 @@ import {
   SIDES, TOTAL_POINTS, TO_WIN, awards, buildDays, dayTitle, formatDate, formatHcp, formatPts, formatTime, isDayComplete,
   playerStandings, points, teamHcp, tournamentStart,
 } from './golf.js';
-import { ICONS, applyEdition, esc, playerChip, renderChrome, showError } from './ui.js';
+import { ICONS, applyEdition, esc, playerChip, renderChrome, showError, withDemo } from './ui.js';
 
 const REFRESH_MS = 60_000;
 
@@ -155,7 +155,7 @@ function renderDay(day, players, settings, collapsible) {
         <div>
           <span class="eyebrow">Day ${day.round}${day.date ? ` · ${esc(formatDate(day.date, { weekday: 'short', month: 'short', day: 'numeric' }))}` : ''}${day.formatInfo ? ` · ${esc(day.formatInfo.sub)}` : ''}</span>
           <h2>${esc(dayTitle(day))}</h2>
-          <div class="round__course">${course} · <a href="schedule.html#day-${day.round}">Schedule →</a></div>
+          <div class="round__course">${course} · <a href="${withDemo(`schedule.html#day-${day.round}`)}">Schedule →</a></div>
         </div>
         ${played ? `
           <div class="round__score num" aria-label="Day ${day.round} score">

@@ -10,6 +10,24 @@ const DEFAULT_SETTINGS = {
   roundMinutes: 300,
 };
 
+/**
+ * Demo mode (?demo=final etc.) swaps the sheet for canned data in /demo. It only
+ * works on localhost so the live site can't be pointed at fake results.
+ */
+const LOCAL_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
+export const DEMO = LOCAL_HOSTS.includes(location.hostname)
+  ? new URLSearchParams(location.search).get('demo') : null;
+
+let demoData;
+async function demoText(name) {
+  if (!demoData) {
+    const { demoTabs, SCENARIO_NAMES } = await import('../demo/data.js');
+    demoData = demoTabs(DEMO);
+    if (!demoData) throw new Error(`Unknown demo scenario "${DEMO}". Try: ${SCENARIO_NAMES.join(', ')}.`);
+  }
+  return demoData[name] ?? '';
+}
+
 const tabUrl = (tab) =>
   `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&headers=1&sheet=${encodeURIComponent(tab)}`;
 
@@ -43,9 +61,14 @@ const key = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
  * lacking any of `required` columns is treated as missing.
  */
 async function fetchTab(name, required) {
-  const res = await fetch(tabUrl(name), { cache: 'no-store' });
-  if (!res.ok) throw new Error(`Couldn't load the "${name}" tab (HTTP ${res.status}).`);
-  const [header = [], ...body] = parseCSV(await res.text());
+  let text;
+  if (DEMO) text = await demoText(name);
+  else {
+    const res = await fetch(tabUrl(name), { cache: 'no-store' });
+    if (!res.ok) throw new Error(`Couldn't load the "${name}" tab (HTTP ${res.status}).`);
+    text = await res.text();
+  }
+  const [header = [], ...body] = parseCSV(text);
   const keys = header.map(key);
   if (!required.every((r) => keys.includes(r))) return null;
   return body
