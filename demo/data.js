@@ -76,7 +76,8 @@ export function demoTabs(name) {
         '6900 Swope Memorial Drive\nKansas City, MO 64132', 'Bronze', '6,079', '71', '70.2', '122', '']),
       csvRow([2, 'Mixed', isoDate(s.startIn + 1), 'Shoal Creek Golf Course', 'https://www.shoalcreekgolf.com',
         '8905 North Shoal Creek Parkway\nKansas City, MO 64157', 'Blue', '6,266', '71', '70.5', '128', '']),
-      csvRow([3, 'Singles', isoDate(s.startIn + 2), '', '', '', '', '', '', '', '', '']),
+      csvRow([3, 'Singles', isoDate(s.startIn + 2), 'Falcon Lakes Golf Club', 'https://falconlakesgolf.com',
+        '4605 Clubhouse Drive\nBasehor, KS 66007', 'White', '6,040', '71', '70.2', '122', '']),
     ].join('\n'),
     Settings: [
       csvRow(['Edition', 'Red Team', 'Blue Team', 'Lower %', 'Higher %', 'Timezone', 'Round Minutes', 'MVP']),
