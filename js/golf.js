@@ -97,16 +97,49 @@ export function playerStandings(days, players) {
   return ranked;
 }
 
+const numeric = (v) => {
+  const n = parseFloat(String(v ?? '').replace(/[^0-9.\-]/g, ''));
+  return Number.isFinite(n) ? n : null;
+};
+
+/** Slope, rating and par for a day's course, or null if any is missing. */
+export function courseData(day) {
+  if (!day) return null;
+  const slope = numeric(day.slope);
+  const rating = numeric(day.rating);
+  const par = numeric(day.par);
+  return slope && rating && par ? { slope, rating, par } : null;
+}
+
+/** Course handicaps apply when the Settings tab asks for them and the day's course is fully rated. */
+export const usesCourseHandicap = (settings, day) => settings.handicapMode === 'course' && !!courseData(day);
+
+/** WHS course handicap: Index × Slope / 113 + (Rating − Par), rounded to a whole number. */
+export function courseHandicap(index, day) {
+  const c = courseData(day);
+  return c ? Math.round(index * (c.slope / 113) + (c.rating - c.par)) : null;
+}
+
+/** The handicap a player plays off on a given day (course or index, per Settings). */
+export const playingHandicap = (player, settings, day) =>
+  (usesCourseHandicap(settings, day) ? courseHandicap(player.hcp, day) : player.hcp);
+
+/** Shows course handicaps as whole numbers, indexes (and weighted team values) to one decimal. */
+export const formatPlaying = (n) => (n == null ? '—' : Number.isInteger(n) ? String(n) : n.toFixed(1));
+
 /** Individual handicap for one player, weighted team handicap for two; null if any is unknown. */
-export function sideHandicap(names, byName, settings) {
-  const hcps = names.map((n) => byName.get(n)?.hcp);
+export function sideHandicap(names, byName, settings, day) {
+  const hcps = names.map((n) => {
+    const p = byName.get(n);
+    return p ? playingHandicap(p, settings, day) : null;
+  });
   if (!hcps.length || hcps.some((h) => h == null)) return null;
   return hcps.length === 1 ? hcps[0] : teamHcp(hcps[0], hcps[1], settings);
 }
 
 /** Stat awards; each is { names, side, label } or null. */
 export function awards(standings, days, players, settings) {
-  const played = days.flatMap((d) => d.matches.map((m) => ({ ...m, round: d.round }))).filter((m) => m.winner);
+  const played = days.flatMap((d) => d.matches.map((m) => ({ ...m, round: d.round, day: d }))).filter((m) => m.winner);
   const decided = played.filter((m) => m.winner !== 'Halved');
   const byName = new Map(players.map((p) => [p.name, p]));
   const joinSides = (ms, pick) => ms.map((m) => pick(m).join(' + ')).join(' / ');
@@ -135,8 +168,8 @@ export function awards(standings, days, players, settings) {
 
   // Strokes between the sides: positive when the winner gave strokes, negative when they received them.
   const spreads = decided.map((m) => {
-    const w = sideHandicap(m[m.winner], byName, settings);
-    const l = sideHandicap(m[other(m.winner)], byName, settings);
+    const w = sideHandicap(m[m.winner], byName, settings, m.day);
+    const l = sideHandicap(m[other(m.winner)], byName, settings, m.day);
     return { m, spread: w == null || l == null ? 0 : Math.sign(l - w) * strokes(w, l) };
   });
   const extreme = (pick, title, label) => {

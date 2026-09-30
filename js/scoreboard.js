@@ -1,7 +1,7 @@
 import { loadData } from './sheet.js';
 import {
-  SIDES, TOTAL_POINTS, TO_WIN, awards, buildDays, dayTitle, formatDate, formatHcp, formatPts, formatTime, isDayComplete,
-  playerStandings, points, sideHandicap, strokes, tournamentStart,
+  SIDES, TOTAL_POINTS, TO_WIN, awards, buildDays, dayTitle, formatDate, formatPts, formatTime, isDayComplete,
+  formatPlaying, playerStandings, points, sideHandicap, strokes, tournamentStart, usesCourseHandicap,
 } from './golf.js';
 import { ICONS, applyEdition, esc, playerChip, renderChrome, showError, withDemo } from './ui.js';
 
@@ -108,8 +108,8 @@ function renderHero(pts, played, teams) {
 }
 
 /** Handicaps for both sides and the strokes the higher side receives. */
-function matchStrokes(match, players, settings) {
-  const hcp = Object.fromEntries(SIDES.map((side) => [side, match[side].length ? sideHandicap(match[side], players, settings) : null]));
+function matchStrokes(match, players, settings, day) {
+  const hcp = Object.fromEntries(SIDES.map((side) => [side, match[side].length ? sideHandicap(match[side], players, settings, day) : null]));
   const n = hcp.red != null && hcp.blue != null ? strokes(hcp.red, hcp.blue) : 0;
   return { hcp, n, receiver: n ? (hcp.red > hcp.blue ? 'red' : 'blue') : null };
 }
@@ -122,7 +122,7 @@ function renderSide(side, names, match, info) {
   return `
     <div class="side side--${side} ${state}">
       <span class="side__names">${label}</span>
-      ${hcp != null ? `<span class="side__hcp num">${names.length > 1 ? 'Team HCP' : 'HCP'} ${formatHcp(hcp)}${gets}</span>` : ''}
+      ${hcp != null ? `<span class="side__hcp num">${names.length > 1 ? 'Team HCP' : 'HCP'} ${formatPlaying(hcp)}${gets}</span>` : ''}
     </div>`;
 }
 
@@ -146,16 +146,16 @@ function renderDay(day, players, settings, collapsible) {
   const rows = day.matches.length
     ? day.matches.map((m) => `
         <li class="match">
-          ${renderSide('red', m.red, m, matchStrokes(m, players, settings))}
+          ${renderSide('red', m.red, m, matchStrokes(m, players, settings, day))}
           <div class="result">${renderResult(m, settings.teams)}</div>
-          ${renderSide('blue', m.blue, m, matchStrokes(m, players, settings))}
+          ${renderSide('blue', m.blue, m, matchStrokes(m, players, settings, day))}
         </li>`).join('')
     : `<li class="empty-row tba">Matchups TBA${expected ? ` · ${expected} matches` : ''}</li>`;
 
   const head = `
       <header class="round__head">
         <div>
-          <span class="eyebrow">Day ${day.round}${day.date ? ` · ${esc(formatDate(day.date, { weekday: 'short', month: 'short', day: 'numeric' }))}` : ''}${day.formatInfo ? ` · ${esc(day.formatInfo.sub)}` : ''}</span>
+          <span class="eyebrow">Day ${day.round}${day.date ? ` · ${esc(formatDate(day.date, { weekday: 'short', month: 'short', day: 'numeric' }))}` : ''}${day.formatInfo ? ` · ${esc(day.formatInfo.sub)}` : ''}${handicapNote(day, settings)}</span>
           <h2>${esc(dayTitle(day))}</h2>
           <div class="round__course">${course} · <a href="${withDemo(`schedule.html#day-${day.round}`)}">Schedule →</a></div>
         </div>
@@ -176,6 +176,12 @@ function renderDay(day, players, settings, collapsible) {
       ${head}
       <ol class="matches">${rows}</ol>
     </section>`;
+}
+
+/** Which handicap the day's HCP figures use, only worth saying when course handicaps are on. */
+function handicapNote(day, settings) {
+  if (settings.handicapMode !== 'course') return '';
+  return usesCourseHandicap(settings, day) ? ' · Course handicaps' : ' · Index (course not rated)';
 }
 
 const signed = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0');

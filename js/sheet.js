@@ -216,6 +216,8 @@ function normalizeSettings(rows, playerRows) {
     timezone: r.timezone || DEFAULT_SETTINGS.timezone,
     roundMinutes: num(r.roundminutes) ?? DEFAULT_SETTINGS.roundMinutes,
     mvp: r.mvp || '',
+    // "Course" plays off WHS course handicaps from each day's slope/rating/par; anything else uses index.
+    handicapMode: /course/i.test(r.handicap ?? '') ? 'course' : 'index',
   };
 }
 

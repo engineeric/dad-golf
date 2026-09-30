@@ -39,16 +39,19 @@ function setupSheet() {
     'Higher %': 0.15,
     'Timezone': 'America/Chicago',
     'Round Minutes': 300,
+    'Handicap': 'Index',
   };
   Object.keys(defaults).forEach((header) => {
     const col = ensureColumn(settings, header, log);
     const cell = settings.getRange(2, col.index);
     if (cell.isBlank()) cell.setValue(defaults[header]);
     if (header.endsWith('%')) cell.setNumberFormat('0.0%');
-    if (header === 'Edition' || header === 'Timezone' || header.endsWith('Team')) cell.setNumberFormat('@');
+    if (header === 'Edition' || header === 'Timezone' || header === 'Handicap' || header.endsWith('Team')) cell.setNumberFormat('@');
   });
   const red = valueUnder(settings, 'Red Team');
   const blue = valueUnder(settings, 'Blue Team');
+  // Handicap: Index, or Course to play off course handicaps from each day's slope/rating/par.
+  settings.getRange(2, ensureColumn(settings, 'Handicap', log).index).setDataValidation(list(['Index', 'Course']));
   // MVP: the commissioner's pick, left blank until decided.
   const mvpCol = ensureColumn(settings, 'MVP', log);
   settings.getRange(2, mvpCol.index).setDataValidation(fromRange(playerNames));
