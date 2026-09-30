@@ -100,9 +100,9 @@ function renderTeeSheet(day) {
           ${g.matches.map((m) => `
             <div class="tee__match">
               <span class="label eyebrow">Match ${m.number}</span>
-              <span class="tee__side">${m.red.map((n) => playerChip(n, 'red', { me })).join('') || '<span class="tba">TBD</span>'}</span>
+              <span class="tee__side tee__side--red">${m.red.map((n) => playerChip(n, 'red', { me })).join('') || '<span class="tba">TBD</span>'}</span>
               <span class="vs eyebrow">vs</span>
-              <span class="tee__side">${m.blue.map((n) => playerChip(n, 'blue', { me })).join('') || '<span class="tba">TBD</span>'}</span>
+              <span class="tee__side tee__side--blue">${m.blue.map((n) => playerChip(n, 'blue', { me })).join('') || '<span class="tba">TBD</span>'}</span>
             </div>`).join('')}
         </div>
       </div>`;
