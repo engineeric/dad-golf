@@ -132,20 +132,24 @@ export function awards(standings, days, players, settings) {
     label: `Lost ${widestMatches[0].result}`,
   } : null;
 
-  const upsets = decided.map((m) => {
+  // Strokes between the sides: positive when the winner gave strokes, negative when they received them.
+  const spreads = decided.map((m) => {
     const w = sideHandicap(m[m.winner], byName, settings);
     const l = sideHandicap(m[other(m.winner)], byName, settings);
-    return { m, gave: w != null && l != null && w < l ? strokes(w, l) : 0 };
-  }).filter((x) => x.gave > 0);
-  const most = Math.max(0, ...upsets.map((x) => x.gave));
-  const killers = upsets.filter((x) => x.gave === most).map((x) => x.m);
-  const giantKiller = most ? {
-    names: joinSides(killers, (m) => m[m.winner]),
-    side: killers[0].winner,
-    label: `Won giving ${most} stroke${most === 1 ? '' : 's'}`,
-  } : null;
+    return { m, spread: w == null || l == null ? 0 : Math.sign(l - w) * strokes(w, l) };
+  });
+  const extreme = (pick, title, label) => {
+    const best = Math.max(0, ...spreads.map((x) => pick(x.spread)));
+    if (!best) return null;
+    const ms = spreads.filter((x) => pick(x.spread) === best).map((x) => x.m);
+    return { title, names: joinSides(ms, (m) => m[m.winner]), side: ms[0].winner, label: label(best) };
+  };
+  const plural = (n) => `${n} stroke${n === 1 ? '' : 's'}`;
+  // Stroke killer: won while giving the most strokes. Fallback: biggest underdog win.
+  const strokeKiller = extreme((s) => s, 'Stroke killer', (n) => `Won giving ${plural(n)}`)
+    ?? extreme((s) => -s, 'Against the odds', (n) => `Won receiving ${plural(n)}`);
 
-  return { pointsLeader, biggestWin, toughestLoss, giantKiller };
+  return { pointsLeader, biggestWin, toughestLoss, strokeKiller };
 }
 
 /** Infers a format from entered matches when the Schedule row doesn't say. */

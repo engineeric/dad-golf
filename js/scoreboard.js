@@ -198,7 +198,7 @@ function renderAward(title, award) {
   if (!award) return '';
   return `
     <div class="card award">
-      <span class="eyebrow">${title}</span>
+      <span class="eyebrow">${esc(award.title ?? title)}</span>
       <strong${award.side ? ` class="fg-${award.side}"` : ''}>${esc(award.names)}</strong>
       <span class="muted">${esc(award.label)}</span>
     </div>`;
@@ -237,7 +237,7 @@ function renderStandings(standings, stats, settings) {
         ${renderAward('Points leader', stats.pointsLeader)}
         ${renderAward('Biggest win', stats.biggestWin)}
         ${renderAward('Toughest loss', stats.toughestLoss)}
-        ${renderAward('Giant killer', stats.giantKiller)}
+        ${renderAward('Stroke killer', stats.strokeKiller)}
       </div>
       <div class="card">
         <header class="lb__title"><h2>Player standings</h2><span class="eyebrow">Tap a player for match log</span></header>
