@@ -99,6 +99,8 @@
 
     @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
     @media (max-width: 720px) {
+      .segmented { display: flex; width: 100%; }
+      .segmented button { flex: 1; padding: 0 6px; font-size: 10px; letter-spacing: 0.08em; }
       .mcard__body { grid-template-columns: 1fr; }
       .pair { padding: 12px 16px 14px; }
       .pair + .pair { border-left: 0; border-top: 1px solid var(--rule); }

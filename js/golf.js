@@ -97,7 +97,8 @@ export function playerStandings(days, players) {
   return ranked;
 }
 
-function sideHandicap(names, byName, settings) {
+/** Individual handicap for one player, weighted team handicap for two; null if any is unknown. */
+export function sideHandicap(names, byName, settings) {
   const hcps = names.map((n) => byName.get(n)?.hcp);
   if (!hcps.length || hcps.some((h) => h == null)) return null;
   return hcps.length === 1 ? hcps[0] : teamHcp(hcps[0], hcps[1], settings);

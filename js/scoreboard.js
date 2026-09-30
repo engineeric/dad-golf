@@ -1,7 +1,7 @@
 import { loadData } from './sheet.js';
 import {
   SIDES, TOTAL_POINTS, TO_WIN, awards, buildDays, dayTitle, formatDate, formatHcp, formatPts, formatTime, isDayComplete,
-  playerStandings, points, teamHcp, tournamentStart,
+  playerStandings, points, sideHandicap, strokes, tournamentStart,
 } from './golf.js';
 import { ICONS, applyEdition, esc, playerChip, renderChrome, showError, withDemo } from './ui.js';
 
@@ -107,20 +107,22 @@ function renderHero(pts, played, teams) {
     </section>`;
 }
 
-function sideHcp(names, players, settings) {
-  const hcps = names.map((n) => players.get(n)?.hcp).filter((h) => h != null);
-  if (hcps.length !== names.length || !names.length) return '';
-  if (hcps.length === 1) return `HCP ${formatHcp(hcps[0])}`;
-  return `Team HCP ${formatHcp(teamHcp(hcps[0], hcps[1], settings))}`;
+/** Handicaps for both sides and the strokes the higher side receives. */
+function matchStrokes(match, players, settings) {
+  const hcp = Object.fromEntries(SIDES.map((side) => [side, match[side].length ? sideHandicap(match[side], players, settings) : null]));
+  const n = hcp.red != null && hcp.blue != null ? strokes(hcp.red, hcp.blue) : 0;
+  return { hcp, n, receiver: n ? (hcp.red > hcp.blue ? 'red' : 'blue') : null };
 }
 
-function renderSide(side, names, match, players, settings) {
+function renderSide(side, names, match, info) {
   const state = match.winner === side ? `won--${side}` : match.winner && match.winner !== 'Halved' ? 'lost' : '';
   const label = names.length ? names.map(esc).join('<br>') : '<span class="tba">TBD</span>';
+  const hcp = info.hcp[side];
+  const gets = info.receiver === side ? `<span class="gets">+${info.n} stroke${info.n === 1 ? '' : 's'}</span>` : '';
   return `
     <div class="side side--${side} ${state}">
       <span class="side__names">${label}</span>
-      <span class="side__hcp num">${sideHcp(names, players, settings)}</span>
+      ${hcp != null ? `<span class="side__hcp num">${names.length > 1 ? 'Team HCP' : 'HCP'} ${formatHcp(hcp)}${gets}</span>` : ''}
     </div>`;
 }
 
@@ -144,9 +146,9 @@ function renderDay(day, players, settings, collapsible) {
   const rows = day.matches.length
     ? day.matches.map((m) => `
         <li class="match">
-          ${renderSide('red', m.red, m, players, settings)}
+          ${renderSide('red', m.red, m, matchStrokes(m, players, settings))}
           <div class="result">${renderResult(m, settings.teams)}</div>
-          ${renderSide('blue', m.blue, m, players, settings)}
+          ${renderSide('blue', m.blue, m, matchStrokes(m, players, settings))}
         </li>`).join('')
     : `<li class="empty-row tba">Matchups TBA${expected ? ` · ${expected} matches` : ''}</li>`;
 

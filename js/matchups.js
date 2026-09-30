@@ -1,22 +1,30 @@
 import { loadData } from './sheet.js';
-import { FORMATS, SIDES, formatHcp, round1, strokes, teamHcp } from './golf.js';
+import { FORMATS, SIDES, formatHcp, round1, sideHandicap, strokes } from './golf.js';
 import { applyEdition, esc, renderChrome, showError } from './ui.js';
 
 renderChrome('matchups');
 const app = document.getElementById('app');
 
-const MODES = ['Matched', 'Mixed'];
-const MATCHES = 4;
-const emptyPicks = () => Array.from({ length: MATCHES }, () => ({ red: ['', ''], blue: ['', ''] }));
+const MODES = ['Matched', 'Mixed', 'Singles'];
+const size = (mode) => (mode === 'Singles' ? 1 : 2); // players per side
+const matchCount = (mode) => FORMATS[mode].slots.length;
+const emptyPicks = (mode) => Array.from({ length: matchCount(mode) }, () => ({
+  red: Array(size(mode)).fill(''),
+  blue: Array(size(mode)).fill(''),
+}));
+const allEmpty = () => Object.fromEntries(MODES.map((m) => [m, emptyPicks(m)]));
 
 let players = [];
+let playerMap = new Map();
 let settings;
-const state = { mode: 'Matched', picks: { Matched: emptyPicks(), Mixed: emptyPicks() } };
+const state = { mode: 'Matched', picks: allEmpty() };
 let helpOpen = false; // survives re-renders
 
-const byName = (n) => players.find((p) => p.name === n);
+const byName = (n) => playerMap.get(n);
 const picks = () => state.picks[state.mode];
-const slotFlight = (match, pos) => FORMATS[state.mode].slots[match][pos];
+/** Required flight for a slot; '' means any player (singles). */
+const slotFlight = (match, pos) => FORMATS[state.mode].slots[match][pos] ?? '';
+const fits = (p, side, flight) => p.side === side && (!flight || p.flight === flight);
 
 // ---------- URL hash: #f=matched&p=R1a~R1b~B1a~B1b~R2a… ----------
 
@@ -32,15 +40,16 @@ function readHash() {
   const mode = MODES.find((m) => m.toLowerCase() === params.get('f'));
   if (mode) state.mode = mode;
   const flat = (params.get('p') ?? '').split('~');
-  if (flat.length !== MATCHES * 4) return;
+  const per = size(state.mode) * 2;
+  if (flat.length !== matchCount(state.mode) * per) return;
   const target = picks();
   const used = new Set();
   flat.forEach((name, i) => {
-    const match = Math.floor(i / 4);
-    const side = SIDES[Math.floor((i % 4) / 2)];
-    const pos = i % 2;
+    const match = Math.floor(i / per);
+    const side = SIDES[Math.floor((i % per) / size(state.mode))];
+    const pos = i % size(state.mode);
     const p = byName(name);
-    const valid = p && p.side === side && p.flight === slotFlight(match, pos) && !used.has(name);
+    const valid = p && fits(p, side, slotFlight(match, pos)) && !used.has(name);
     if (valid) used.add(name);
     target[match][side][pos] = valid ? name : '';
   });
@@ -58,12 +67,19 @@ const shuffle = (arr) => {
 };
 
 function randomFill() {
-  const next = emptyPicks();
+  const next = emptyPicks(state.mode);
   for (const side of SIDES) {
-    const pools = {};
+    const pools = { '': shuffle(players.filter((p) => p.side === side)) };
     for (const f of ['A', 'B']) pools[f] = shuffle(players.filter((p) => p.side === side && p.flight === f));
+    const taken = new Set();
     next.forEach((m, match) => {
-      for (const pos of [0, 1]) m[side][pos] = pools[slotFlight(match, pos)].shift()?.name ?? '';
+      m[side].forEach((_, pos) => {
+        const pool = pools[slotFlight(match, pos)];
+        let p = pool.shift();
+        while (p && taken.has(p.name)) p = pool.shift();
+        if (p) taken.add(p.name);
+        m[side][pos] = p?.name ?? '';
+      });
     });
   }
   state.picks[state.mode] = next;
@@ -71,54 +87,53 @@ function randomFill() {
 
 // ---------- Rendering ----------
 
-function pairHcp(names) {
-  const [a, b] = names.map(byName);
-  return a && b ? teamHcp(a.hcp, b.hcp, settings) : null;
-}
+const sideHcp = (names) => (names.every(Boolean) ? sideHandicap(names, playerMap, settings) : null);
 
 function renderSelect(match, side, pos, used) {
   const flight = slotFlight(match, pos);
   const current = picks()[match][side][pos];
   const options = players
-    .filter((p) => p.side === side && p.flight === flight)
+    .filter((p) => fits(p, side, flight))
     .sort((a, b) => a.hcp - b.hcp)
     .map((p) => {
       const taken = p.name !== current && used.has(p.name);
       return `<option value="${esc(p.name)}"${p.name === current ? ' selected' : ''}${taken ? ' disabled' : ''}>${esc(p.name)} (${formatHcp(p.hcp)})${taken ? ' · taken' : ''}</option>`;
     }).join('');
   return `
-    <label class="visually-hidden" for="s-${match}-${side}-${pos}">Team ${esc(settings.teams[side])} match ${match + 1} player ${pos + 1} (Flight ${flight})</label>
+    <label class="visually-hidden" for="s-${match}-${side}-${pos}">Team ${esc(settings.teams[side])} match ${match + 1} player ${pos + 1}${flight ? ` (Flight ${flight})` : ''}</label>
     <select class="select" id="s-${match}-${side}-${pos}" data-match="${match}" data-side="${side}" data-pos="${pos}">
-      <option value="">Flight ${flight} player…</option>${options}
+      <option value="">${flight ? `Flight ${flight} player…` : 'Select player…'}</option>${options}
     </select>`;
 }
 
 function renderMatch(match, used) {
   const m = picks()[match];
-  const hcp = { red: pairHcp(m.red), blue: pairHcp(m.blue) };
+  const singles = size(state.mode) === 1;
+  const hcp = { red: sideHcp(m.red), blue: sideHcp(m.blue) };
   const complete = hcp.red != null && hcp.blue != null;
   const diff = complete ? strokes(hcp.red, hcp.blue) : 0;
   const receiver = complete && diff ? (hcp.red > hcp.blue ? 'red' : 'blue') : null;
+  const who = receiver && (singles ? esc(m[receiver][0]) : `Team ${esc(settings.teams[receiver])}`);
   const verdict = !complete
-    ? '<div class="mcard__foot tba">Select all four players</div>'
+    ? `<div class="mcard__foot tba">Select ${singles ? 'both' : 'all four'} players</div>`
     : receiver
-      ? `<div class="mcard__foot">Team ${esc(settings.teams[receiver])} gets <span class="num">${diff}</span> stroke${diff === 1 ? '' : 's'}</div>`
+      ? `<div class="mcard__foot">${who} gets <span class="num">${diff}</span> stroke${diff === 1 ? '' : 's'}</div>`
       : '<div class="mcard__foot">Even match · no strokes</div>';
+  const label = FORMATS[state.mode].slots[match];
 
   return `
     <section class="card">
       <header class="mcard__head">
         <h2>Match ${match + 1}</h2>
-        <span class="flight">${FORMATS[state.mode].slots[match]}</span>
+        ${label ? `<span class="flight">${label}</span>` : ''}
       </header>
       <div class="mcard__body">
         ${SIDES.map((side) => `
           <div class="pair pair--${side}">
             <span class="pair__label eyebrow fg-${side}">Team ${esc(settings.teams[side])}</span>
-            ${renderSelect(match, side, 0, used)}
-            ${renderSelect(match, side, 1, used)}
+            ${m[side].map((_, pos) => renderSelect(match, side, pos, used)).join('')}
             <div class="pair__hcp">
-              <span><span class="eyebrow">Team HCP</span><br><strong>${formatHcp(hcp[side])}</strong></span>
+              <span><span class="eyebrow">${singles ? 'HCP' : 'Team HCP'}</span><br><strong>${formatHcp(hcp[side])}</strong></span>
               ${receiver === side ? `<span class="gets">+${diff}</span>` : ''}
             </div>
           </div>`).join('')}
@@ -132,8 +147,8 @@ function render() {
   const totals = { red: 0, blue: 0 };
   let complete = 0;
   for (const m of picks()) {
-    const r = pairHcp(m.red);
-    const b = pairHcp(m.blue);
+    const r = sideHcp(m.red);
+    const b = sideHcp(m.blue);
     if (r != null && b != null) { totals.red += r; totals.blue += b; complete++; }
   }
   const pct = (n) => `${Math.round(n * 100)}%`;
@@ -141,7 +156,7 @@ function render() {
   app.innerHTML = `
     <details class="help"${helpOpen ? ' open' : ''}>
       <summary class="eyebrow">How it works</summary>
-      <p>Build a lineup for either 2v2 round to see team handicaps and strokes. Team handicap is ${pct(settings.lowerPct)} of the lower handicap plus ${pct(settings.higherPct)} of the higher. This is a preview only; official matchups are posted on the Schedule.</p>
+      <p>Build a lineup for any round to see handicaps and strokes. In 2v2, team handicap is ${pct(settings.lowerPct)} of the lower handicap plus ${pct(settings.higherPct)} of the higher; in singles, strokes are the difference between the two players' handicaps. This is a preview only; official matchups are posted on the Schedule.</p>
     </details>
     <div class="toolbar">
       <div class="segmented" role="group" aria-label="Format">
@@ -155,7 +170,7 @@ function render() {
     </div>
     <section class="card summary" aria-label="Lineup totals">
       <div class="g bg-red"><span class="eyebrow">${esc(settings.teams.red)} total</span><strong>${complete ? formatHcp(round1(totals.red)) : '—'}</strong></div>
-      <div class="mid"><span class="eyebrow">${FORMATS[state.mode].sub}</span><br><span class="num">${complete} of ${MATCHES}</span> matches set</div>
+      <div class="mid"><span class="eyebrow">${FORMATS[state.mode].sub}</span><br><span class="num">${complete} of ${matchCount(state.mode)}</span> matches set</div>
       <div class="e bg-blue"><span class="eyebrow">${esc(settings.teams.blue)} total</span><strong>${complete ? formatHcp(round1(totals.blue)) : '—'}</strong></div>
     </section>
     <div class="grid">${picks().map((_, i) => renderMatch(i, used)).join('')}</div>`;
@@ -182,7 +197,7 @@ app.addEventListener('click', async (e) => {
   if (!btn) return;
   if (btn.dataset.mode) state.mode = btn.dataset.mode;
   else if (btn.dataset.action === 'random') randomFill();
-  else if (btn.dataset.action === 'clear') state.picks[state.mode] = emptyPicks();
+  else if (btn.dataset.action === 'clear') state.picks[state.mode] = emptyPicks(state.mode);
   else if (btn.dataset.action === 'share') {
     try {
       await navigator.clipboard.writeText(location.href);
@@ -199,13 +214,14 @@ app.addEventListener('click', async (e) => {
 
 // replaceState doesn't fire this, so it only runs for pasted/edited links.
 window.addEventListener('hashchange', () => {
-  state.picks = { Matched: emptyPicks(), Mixed: emptyPicks() };
+  state.picks = allEmpty();
   readHash();
   render();
 });
 
 try {
   ({ players, settings } = await loadData());
+  playerMap = new Map(players.map((p) => [p.name, p]));
   applyEdition(settings.edition);
   readHash();
   writeHash();
