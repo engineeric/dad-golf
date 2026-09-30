@@ -235,6 +235,7 @@ function renderStandings(standings, stats, settings) {
     <section class="standings" aria-label="Player standings">
       <div class="awards">
         ${renderAward('Points leader', stats.pointsLeader)}
+        ${renderAward('Locked in', stats.lockedIn)}
         ${renderAward('Biggest win', stats.biggestWin)}
         ${renderAward('Toughest loss', stats.toughestLoss)}
         ${renderAward('Stroke killer', stats.strokeKiller)}

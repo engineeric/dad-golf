@@ -149,7 +149,17 @@ export function awards(standings, days, players, settings) {
   const strokeKiller = extreme((s) => s, 'Stroke killer', (n) => `Won giving ${plural(n)}`)
     ?? extreme((s) => -s, 'Against the odds', (n) => `Won receiving ${plural(n)}`);
 
-  return { pointsLeader, biggestWin, toughestLoss, strokeKiller };
+  // Locked in: won every match played, with at least two played (one win isn't a streak).
+  const perfect = standings.filter((r) => r.w >= 2 && r.l === 0 && r.h === 0);
+  const maxWins = Math.max(0, ...perfect.map((r) => r.w));
+  const unbeaten = perfect.filter((r) => r.w === maxWins);
+  const lockedIn = unbeaten.length ? {
+    names: unbeaten.map((r) => r.name).join(' / '),
+    side: unbeaten.every((r) => r.side === unbeaten[0].side) ? unbeaten[0].side : null,
+    label: `Perfect ${maxWins}-0-0`,
+  } : null;
+
+  return { pointsLeader, lockedIn, biggestWin, toughestLoss, strokeKiller };
 }
 
 /** Infers a format from entered matches when the Schedule row doesn't say. */
