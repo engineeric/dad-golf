@@ -17,9 +17,7 @@
       gap: 12px;
       margin-bottom: 18px;
     }
-    .basis { display: flex; align-items: center; gap: 10px; }
-    .basis .eyebrow { color: var(--muted); font-size: 10px; white-space: nowrap; }
-    .basis .select { height: 38px; font-size: 14px; width: auto; min-width: 220px; }
+    .basis { margin: -4px 0 14px; color: var(--muted); font-size: 10px; }
     .help { margin: 0 0 14px; }
     .help summary {
       display: inline-flex;
@@ -104,8 +102,6 @@
     @media (max-width: 720px) {
       .segmented { display: flex; width: 100%; }
       .segmented button { flex: 1; padding: 0 6px; font-size: 10px; letter-spacing: 0.08em; }
-      .basis { width: 100%; }
-      .basis .select { flex: 1; min-width: 0; }
       .mcard__body { grid-template-columns: 1fr; }
       .pair { padding: 12px 16px 14px; }
       .pair + .pair { border-left: 0; border-top: 1px solid var(--rule); }

@@ -1,6 +1,6 @@
 import { loadData } from './sheet.js';
 import {
-  FORMATS, SIDES, buildDays, courseData, dayTitle, formatPlaying, playingHandicap, round1, sideHandicap, strokes,
+  FORMATS, SIDES, buildDays, courseData, formatPlaying, playingHandicap, round1, sideHandicap, strokes,
 } from './golf.js';
 import { applyEdition, esc, renderChrome, showError } from './ui.js';
 
@@ -20,8 +20,7 @@ let players = [];
 let playerMap = new Map();
 let settings;
 let days = [];
-// course: null = pick the day matching the format; a round number or 'index' once chosen.
-const state = { mode: 'Matched', picks: allEmpty(), course: null };
+const state = { mode: 'Matched', picks: allEmpty() };
 let helpOpen = false; // survives re-renders
 
 const byName = (n) => playerMap.get(n);
@@ -36,15 +35,12 @@ function writeHash() {
   const flat = picks().flatMap((m) => [...m.red, ...m.blue]);
   const params = new URLSearchParams({ f: state.mode.toLowerCase() });
   if (flat.some(Boolean)) params.set('p', flat.join('~'));
-  if (state.course != null) params.set('c', state.course);
   history.replaceState(null, '', `#${params}`);
 }
 
 function readHash() {
   const params = new URLSearchParams(location.hash.slice(1));
   const mode = MODES.find((m) => m.toLowerCase() === params.get('f'));
-  const c = params.get('c');
-  state.course = c === 'index' ? 'index' : c && Number.isFinite(+c) ? +c : null;
   if (mode) state.mode = mode;
   const flat = (params.get('p') ?? '').split('~');
   const per = size(state.mode) * 2;
@@ -97,31 +93,24 @@ function randomFill() {
 // ---------- Handicap basis (course handicaps only when Settings asks for them) ----------
 
 const courseMode = () => settings.handicapMode === 'course';
-const ratedDays = () => days.filter((d) => courseData(d));
 
-/** The day whose course handicaps the preview uses, or null for handicap index. */
-function previewDay() {
-  if (!courseMode() || state.course === 'index') return null;
-  if (state.course != null) return ratedDays().find((d) => d.round === state.course) ?? null;
-  return ratedDays().find((d) => d.format === state.mode) ?? ratedDays()[0] ?? null;
-}
+/** Each format is played on exactly one day, so the preview uses that day's course. */
+const formatDay = () => days.find((d) => d.format === state.mode) ?? null;
+
+/** The day whose course handicaps apply, or null to use handicap index. */
+const previewDay = () => (courseMode() && courseData(formatDay()) ? formatDay() : null);
 
 const playing = (p) => playingHandicap(p, settings, previewDay());
 const sideHcp = (names) => (names.every(Boolean) ? sideHandicap(names, playerMap, settings, previewDay()) : null);
 
-function renderCoursePicker() {
+/** Says which handicaps the preview is using; nothing to say when Settings uses index. */
+function renderBasis() {
   if (!courseMode()) return '';
   const day = previewDay();
-  const options = ratedDays().map((d) =>
-    `<option value="${d.round}"${day?.round === d.round ? ' selected' : ''}>Day ${d.round} · ${esc(d.course || dayTitle(d))}${d.tees ? ` (${esc(d.tees)})` : ''}</option>`).join('');
-  return `
-    <label class="basis">
-      <span class="eyebrow">Handicaps</span>
-      <select class="select" id="course">
-        ${options}
-        <option value="index"${day ? '' : ' selected'}>Handicap index</option>
-      </select>
-    </label>`;
+  const text = day
+    ? `Course handicaps · Day ${day.round} · ${esc(day.course)}${day.tees ? ` (${esc(day.tees)} tees)` : ''}`
+    : `Handicap index · ${formatDay() ? `Day ${formatDay().round} course not rated yet` : 'no day scheduled for this format'}`;
+  return `<p class="basis eyebrow">${text}</p>`;
 }
 
 function renderSelect(match, side, pos, used) {
@@ -191,19 +180,19 @@ function render() {
   app.innerHTML = `
     <details class="help"${helpOpen ? ' open' : ''}>
       <summary class="eyebrow">How it works</summary>
-      <p>Build a lineup for any round to see handicaps and strokes. In 2v2, team handicap is ${pct(settings.lowerPct)} of the lower handicap plus ${pct(settings.higherPct)} of the higher; in singles, strokes are the difference between the two players' handicaps.${courseMode() ? ' Handicaps are course handicaps (Index × Slope ÷ 113 + Rating − Par) for the course picked below.' : ''} This is a preview only; official matchups are posted on the Schedule.</p>
+      <p>Build a lineup for any round to see handicaps and strokes. In 2v2, team handicap is ${pct(settings.lowerPct)} of the lower handicap plus ${pct(settings.higherPct)} of the higher; in singles, strokes are the difference between the two players' handicaps.${courseMode() ? ' Handicaps are course handicaps (Index × Slope ÷ 113 + Rating − Par) for the course where this format is played.' : ''} This is a preview only; official matchups are posted on the Schedule.</p>
     </details>
     <div class="toolbar">
       <div class="segmented" role="group" aria-label="Format">
         ${MODES.map((m) => `<button class="eyebrow" data-mode="${m}" aria-pressed="${m === state.mode}">${FORMATS[m].title}</button>`).join('')}
       </div>
-      ${renderCoursePicker()}
       <div class="btn-row">
         <button class="btn" data-action="random">Random Fill</button>
         <button class="btn" data-action="clear">Clear</button>
         <button class="btn btn--solid" data-action="share">Copy Link</button>
       </div>
     </div>
+    ${renderBasis()}
     <section class="card summary" aria-label="Lineup totals">
       <div class="g bg-red"><span class="eyebrow">${esc(settings.teams.red)} total</span><strong>${complete ? formatPlaying(round1(totals.red)) : '—'}</strong></div>
       <div class="mid"><span class="eyebrow">${FORMATS[state.mode].sub}</span><br><span class="num">${complete} of ${matchCount(state.mode)}</span> matches set</div>
@@ -220,12 +209,6 @@ app.addEventListener('toggle', (e) => {
 }, true);
 
 app.addEventListener('change', (e) => {
-  if (e.target.id === 'course') {
-    state.course = e.target.value === 'index' ? 'index' : +e.target.value;
-    writeHash();
-    render();
-    return;
-  }
   const s = e.target.closest('select[data-match]');
   if (!s) return;
   picks()[+s.dataset.match][s.dataset.side][+s.dataset.pos] = s.value;

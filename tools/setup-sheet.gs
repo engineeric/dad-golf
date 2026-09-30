@@ -41,17 +41,18 @@ function setupSheet() {
     'Round Minutes': 300,
     'Handicap': 'Index',
   };
+  // Dropdowns go on before defaults are written, so a value never lands under a stale rule.
+  const settingRules = { 'Handicap': list(['Index', 'Course']) };
   Object.keys(defaults).forEach((header) => {
     const col = ensureColumn(settings, header, log);
     const cell = settings.getRange(2, col.index);
+    cell.setDataValidation(settingRules[header] ?? null);
     if (cell.isBlank()) cell.setValue(defaults[header]);
     if (header.endsWith('%')) cell.setNumberFormat('0.0%');
     if (header === 'Edition' || header === 'Timezone' || header === 'Handicap' || header.endsWith('Team')) cell.setNumberFormat('@');
   });
   const red = valueUnder(settings, 'Red Team');
   const blue = valueUnder(settings, 'Blue Team');
-  // Handicap: Index, or Course to play off course handicaps from each day's slope/rating/par.
-  settings.getRange(2, ensureColumn(settings, 'Handicap', log).index).setDataValidation(list(['Index', 'Course']));
   // MVP: the commissioner's pick, left blank until decided.
   const mvpCol = ensureColumn(settings, 'MVP', log);
   settings.getRange(2, mvpCol.index).setDataValidation(fromRange(playerNames));
@@ -127,6 +128,8 @@ function ensureColumn(sheet, header, log) {
   if (idx >= 0) return { index: idx + 1, added: false };
   const index = sheet.getLastColumn() + 1;
   if (sheet.getMaxColumns() < index) sheet.insertColumnAfter(sheet.getMaxColumns());
+  // Inserted columns inherit the left neighbour's validation and formats; start clean.
+  sheet.getRange(1, index, sheet.getMaxRows()).clearDataValidations().clearFormat();
   styleHeader(sheet.getRange(1, index).setValue(header));
   log.push(sheet.getName() + ': added column ' + header);
   return { index: index, added: true };
