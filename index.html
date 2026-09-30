@@ -40,8 +40,8 @@
     .hero__team--blue .hero__text { text-align: right; align-items: flex-end; margin-left: auto; }
     /* Trophy sits on the inner edge, next to the centre panel. */
     .hero__team--red .hero__trophy { order: 2; }
-    .hero__trophy { flex: none; color: var(--gold); margin-bottom: 6px; }
-    .hero__trophy svg { display: block; width: 46px; height: 58px; }
+    .hero__trophy { flex: none; color: var(--gold); margin-bottom: 4px; }
+    .hero__trophy svg { display: block; width: 58px; height: 100px; }
     .hero__team h2 { margin: 0; font-family: var(--serif); font-size: 30px; line-height: 1.1; }
     .hero__pts { font-size: 84px; font-weight: 800; line-height: 1; margin-top: 10px; font-variant-numeric: tabular-nums; }
     .hero__mid {
@@ -92,7 +92,10 @@
     .round__course { font-size: 14px; color: var(--muted); }
     .round__course a { color: var(--ink); font-weight: 600; text-decoration: none; }
     .round__course a:hover { text-decoration: underline; }
-    .round__score { display: flex; gap: 14px; align-items: baseline; font-weight: 800; font-size: 26px; white-space: nowrap; }
+    /* Fixed-width columns so scores line up across day cards ("2" vs "2½"). */
+    .round__score { display: grid; grid-template-columns: 2.1em auto 2.1em; column-gap: 12px; align-items: baseline; font-weight: 800; font-size: 26px; white-space: nowrap; }
+    .round__score .fg-red { text-align: right; }
+    .round__score .fg-blue { text-align: left; }
     .round__score .dash { color: var(--rule); font-weight: 400; }
 
     .matches { list-style: none; margin: 0; padding: 0; }
@@ -198,7 +201,7 @@
       .hero__team h2 { font-size: 22px; }
       .hero__pts { font-size: 60px; }
       .hero__team { gap: 6px; }
-      .hero__trophy svg { width: 32px; height: 40px; }
+      .hero__trophy svg { width: 38px; height: 66px; }
       .mvp { padding: 14px 16px; gap: 12px; flex-wrap: wrap; }
       .mvp__icon { width: 40px; height: 40px; }
       .mvp__body strong { font-size: 20px; }
