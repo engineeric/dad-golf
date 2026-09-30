@@ -1,5 +1,7 @@
 import { loadData } from './sheet.js';
-import { FORMATS, SIDES, formatHcp, round1, sideHandicap, strokes } from './golf.js';
+import {
+  FORMATS, SIDES, buildDays, courseData, formatPlaying, playingHandicap, round1, sideHandicap, strokes,
+} from './golf.js';
 import { applyEdition, esc, renderChrome, showError } from './ui.js';
 
 renderChrome('matchups');
@@ -17,6 +19,7 @@ const allEmpty = () => Object.fromEntries(MODES.map((m) => [m, emptyPicks(m)]));
 let players = [];
 let playerMap = new Map();
 let settings;
+let days = [];
 const state = { mode: 'Matched', picks: allEmpty() };
 let helpOpen = false; // survives re-renders
 
@@ -87,7 +90,28 @@ function randomFill() {
 
 // ---------- Rendering ----------
 
-const sideHcp = (names) => (names.every(Boolean) ? sideHandicap(names, playerMap, settings) : null);
+// ---------- Handicap basis (course handicaps only when Settings asks for them) ----------
+
+const courseMode = () => settings.handicapMode === 'course';
+
+/** Each format is played on exactly one day, so the preview uses that day's course. */
+const formatDay = () => days.find((d) => d.format === state.mode) ?? null;
+
+/** The day whose course handicaps apply, or null to use handicap index. */
+const previewDay = () => (courseMode() && courseData(formatDay()) ? formatDay() : null);
+
+const playing = (p) => playingHandicap(p, settings, previewDay());
+const sideHcp = (names) => (names.every(Boolean) ? sideHandicap(names, playerMap, settings, previewDay()) : null);
+
+/** Says which handicaps the preview is using; nothing to say when Settings uses index. */
+function renderBasis() {
+  if (!courseMode()) return '';
+  const day = previewDay();
+  const text = day
+    ? `Course handicaps · Day ${day.round} · ${esc(day.course)}${day.tees ? ` (${esc(day.tees)} tees)` : ''}`
+    : `Handicap index · ${formatDay() ? `Day ${formatDay().round} course not rated yet` : 'no day scheduled for this format'}`;
+  return `<p class="basis eyebrow">${text}</p>`;
+}
 
 function renderSelect(match, side, pos, used) {
   const flight = slotFlight(match, pos);
@@ -97,7 +121,7 @@ function renderSelect(match, side, pos, used) {
     .sort((a, b) => a.hcp - b.hcp)
     .map((p) => {
       const taken = p.name !== current && used.has(p.name);
-      return `<option value="${esc(p.name)}"${p.name === current ? ' selected' : ''}${taken ? ' disabled' : ''}>${esc(p.name)} (${formatHcp(p.hcp)})${taken ? ' · taken' : ''}</option>`;
+      return `<option value="${esc(p.name)}"${p.name === current ? ' selected' : ''}${taken ? ' disabled' : ''}>${esc(p.name)} (${formatPlaying(playing(p))})${taken ? ' · taken' : ''}</option>`;
     }).join('');
   return `
     <label class="visually-hidden" for="s-${match}-${side}-${pos}">Team ${esc(settings.teams[side])} match ${match + 1} player ${pos + 1}${flight ? ` (Flight ${flight})` : ''}</label>
@@ -133,7 +157,7 @@ function renderMatch(match, used) {
             <span class="pair__label eyebrow fg-${side}">Team ${esc(settings.teams[side])}</span>
             ${m[side].map((_, pos) => renderSelect(match, side, pos, used)).join('')}
             <div class="pair__hcp">
-              <span><span class="eyebrow">${singles ? 'HCP' : 'Team HCP'}</span><br><strong>${formatHcp(hcp[side])}</strong></span>
+              <span><span class="eyebrow">${singles ? 'HCP' : 'Team HCP'}</span><br><strong>${formatPlaying(hcp[side])}</strong></span>
               ${receiver === side ? `<span class="gets">+${diff}</span>` : ''}
             </div>
           </div>`).join('')}
@@ -156,7 +180,7 @@ function render() {
   app.innerHTML = `
     <details class="help"${helpOpen ? ' open' : ''}>
       <summary class="eyebrow">How it works</summary>
-      <p>Build a lineup for any round to see handicaps and strokes. In 2v2, team handicap is ${pct(settings.lowerPct)} of the lower handicap plus ${pct(settings.higherPct)} of the higher; in singles, strokes are the difference between the two players' handicaps. This is a preview only; official matchups are posted on the Schedule.</p>
+      <p>Build a lineup for any round to see handicaps and strokes. In 2v2, team handicap is ${pct(settings.lowerPct)} of the lower handicap plus ${pct(settings.higherPct)} of the higher; in singles, strokes are the difference between the two players' handicaps.${courseMode() ? ' Handicaps are course handicaps (Index × Slope ÷ 113 + Rating − Par) for the course where this format is played.' : ''} This is a preview only; official matchups are posted on the Schedule.</p>
     </details>
     <div class="toolbar">
       <div class="segmented" role="group" aria-label="Format">
@@ -168,10 +192,11 @@ function render() {
         <button class="btn btn--solid" data-action="share">Copy Link</button>
       </div>
     </div>
+    ${renderBasis()}
     <section class="card summary" aria-label="Lineup totals">
-      <div class="g bg-red"><span class="eyebrow">${esc(settings.teams.red)} total</span><strong>${complete ? formatHcp(round1(totals.red)) : '—'}</strong></div>
+      <div class="g bg-red"><span class="eyebrow">${esc(settings.teams.red)} total</span><strong>${complete ? formatPlaying(round1(totals.red)) : '—'}</strong></div>
       <div class="mid"><span class="eyebrow">${FORMATS[state.mode].sub}</span><br><span class="num">${complete} of ${matchCount(state.mode)}</span> matches set</div>
-      <div class="e bg-blue"><span class="eyebrow">${esc(settings.teams.blue)} total</span><strong>${complete ? formatHcp(round1(totals.blue)) : '—'}</strong></div>
+      <div class="e bg-blue"><span class="eyebrow">${esc(settings.teams.blue)} total</span><strong>${complete ? formatPlaying(round1(totals.blue)) : '—'}</strong></div>
     </section>
     <div class="grid">${picks().map((_, i) => renderMatch(i, used)).join('')}</div>`;
 }
@@ -220,7 +245,9 @@ window.addEventListener('hashchange', () => {
 });
 
 try {
-  ({ players, settings } = await loadData());
+  const data = await loadData();
+  ({ players, settings } = data);
+  days = buildDays(data);
   playerMap = new Map(players.map((p) => [p.name, p]));
   applyEdition(settings.edition);
   readHash();

@@ -57,9 +57,11 @@ function isoDate(offsetDays) {
 
 export const SCENARIO_NAMES = Object.keys(SCENARIOS);
 
+/** `&hcp=index` switches the demo back to handicap index; demos default to course handicaps. */
 export function demoTabs(name) {
   const s = SCENARIOS[name];
   if (!s) return null;
+  const handicap = new URLSearchParams(location.search).get('hcp') === 'index' ? 'Index' : 'Course';
 
   // Matchups are posted one day ahead: results for played rounds, tee sheet for the next.
   const posted = Math.min(3, s.played + 1);
@@ -80,8 +82,8 @@ export function demoTabs(name) {
         '4605 Clubhouse Drive\nBasehor, KS 66007', 'White', '6,040', '71', '70.2', '122', '']),
     ].join('\n'),
     Settings: [
-      csvRow(['Edition', 'Red Team', 'Blue Team', 'Lower %', 'Higher %', 'Timezone', 'Round Minutes', 'MVP']),
-      csvRow(['IV', 'Garrett', 'Eric', '35.0%', '15.0%', 'America/Chicago', '300', s.mvp ?? '']),
+      csvRow(['Edition', 'Red Team', 'Blue Team', 'Lower %', 'Higher %', 'Timezone', 'Round Minutes', 'MVP', 'Handicap']),
+      csvRow(['IV', 'Garrett', 'Eric', '35.0%', '15.0%', 'America/Chicago', '300', s.mvp ?? '', handicap]),
     ].join('\n'),
   };
 }

@@ -18,11 +18,11 @@ function cachedEdition() {
   try { return localStorage.getItem(EDITION_KEY) || 'IV'; } catch { return 'IV'; }
 }
 
-/** Keeps ?demo=… on internal links so demo mode survives navigation. */
+/** Keeps the demo query (?demo=…&hcp=…) on internal links so demo mode survives navigation. */
 export function withDemo(href) {
   if (!DEMO) return href;
   const [path, hash] = href.split('#');
-  return `${path}?demo=${encodeURIComponent(DEMO)}${hash ? `#${hash}` : ''}`;
+  return `${path}${location.search}${hash ? `#${hash}` : ''}`;
 }
 
 export function renderChrome(pageId) {
