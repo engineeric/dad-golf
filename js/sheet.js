@@ -192,6 +192,7 @@ function normalizeSettings(rows, playerRows) {
     higherPct: pct(r.higher ?? r.higherpct ?? r.higherhcp) ?? DEFAULT_SETTINGS.higherPct,
     timezone: r.timezone || DEFAULT_SETTINGS.timezone,
     roundMinutes: num(r.roundminutes) ?? DEFAULT_SETTINGS.roundMinutes,
+    mvp: r.mvp || '',
   };
 }
 
@@ -205,6 +206,8 @@ export async function loadData() {
   if (!players) throw new Error('The "Players" tab is missing from the sheet.');
   const normalizedSettings = normalizeSettings(settings, players);
   const roster = normalizePlayers(players, normalizedSettings.teams);
+  // The commissioner's MVP pick, as a display name (blank until chosen).
+  normalizedSettings.mvp = normalizedSettings.mvp ? roster.aliases.get(key(normalizedSettings.mvp)) ?? '' : '';
   return {
     players: roster.players,
     matches: normalizeMatches(matches ?? [], normalizedSettings.teams, roster.aliases),

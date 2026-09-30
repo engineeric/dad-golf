@@ -49,6 +49,9 @@ function setupSheet() {
   });
   const red = valueUnder(settings, 'Red Team');
   const blue = valueUnder(settings, 'Blue Team');
+  // MVP: the commissioner's pick, left blank until decided.
+  const mvpCol = ensureColumn(settings, 'MVP', log);
+  settings.getRange(2, mvpCol.index).setDataValidation(fromRange(playerNames));
 
   // ---------- Matches ----------
   const matches = createTab(ss, 'Matches', ['Round', 'Tee Time', 'Red 1', 'Red 2', 'Blue 1', 'Blue 2', 'Winner', 'Result'], log);
@@ -60,7 +63,16 @@ function setupSheet() {
   matches.getRange(2, col('Tee Time'), rows).setNumberFormat('h:mm AM/PM');
   ['Red 1', 'Red 2', 'Blue 1', 'Blue 2'].forEach((h) => matches.getRange(2, col(h), rows).setDataValidation(fromRange(playerNames)));
   matches.getRange(2, col('Winner'), rows).setDataValidation(list([red, blue, 'Halved']));
-  matches.getRange(2, col('Result'), rows).setNumberFormat('@');
+  // Warn (don't block) on results the site can't read a margin from: 3&2, 2 UP, Halved, AS.
+  const resultCol = col('Result');
+  const resultCell = matches.getRange(2, resultCol).getA1Notation();
+  const resultRule = SpreadsheetApp.newDataValidation()
+    .requireFormulaSatisfied('=OR(' + resultCell + '="", REGEXMATCH(TO_TEXT(' + resultCell + '), "(?i)^\\s*(\\d+\\s*&\\s*\\d+|\\d+\\s*UP|HALVED?|AS|ALL SQUARE)\\s*$"))')
+    .setAllowInvalid(true)
+    .setHelpText('Use match-play results like 3&2, 2 UP, or Halved so the site can compute margins.')
+    .build();
+  matches.getRange(2, resultCol, rows).setNumberFormat('@').setDataValidation(resultRule);
+  log.push('Matches: Result validation (warning only) applied');
 
   // ---------- Schedule ----------
   const schedule = createTab(ss, 'Schedule',
