@@ -167,7 +167,6 @@
     .player > summary { list-style: none; cursor: pointer; }
     .player > summary::-webkit-details-marker { display: none; }
     .player > summary:hover { background: var(--cream); }
-    .player.is-mvp > summary { background: rgba(204, 166, 92, 0.14); box-shadow: inset 4px 0 var(--gold); }
     .lb__name { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lb__pts { font-weight: 800; }
     .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 10px; vertical-align: 1px; }
@@ -186,7 +185,6 @@
 
     @media (prefers-color-scheme: dark) {
       .pos, .res--W { color: #97c459; }
-      .player.is-mvp > summary { background: rgba(204, 166, 92, 0.12); }
     }
 
     @media (max-width: 720px) {

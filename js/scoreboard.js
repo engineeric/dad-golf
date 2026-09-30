@@ -218,9 +218,9 @@ function renderLog(entry) {
     </li>`;
 }
 
-function renderStandings(standings, stats, settings) {
+function renderStandings(standings, stats) {
   const rows = standings.map((r) => `
-    <details class="player${r.name === settings.mvp ? ' is-mvp' : ''}" data-player="${esc(r.name)}"${openPlayers.has(r.name) ? ' open' : ''}>
+    <details class="player" data-player="${esc(r.name)}"${openPlayers.has(r.name) ? ' open' : ''}>
       <summary class="lb__row">
         <span class="muted">${r.rank}</span>
         <span class="lb__name"><i class="dot bg-${r.side}"></i>${esc(r.name)}</span>
@@ -264,7 +264,7 @@ async function refresh() {
       ${renderHero(pts, played, data.settings.teams)}
       ${renderMvp(data.settings, standings)}
       <div class="rounds">${days.map((d) => renderDay(d, players, data.settings, final)).join('')}</div>
-      ${days.some(isDayComplete) ? renderStandings(standings, awards(standings, days, data.players, data.settings), data.settings) : ''}`;
+      ${days.some(isDayComplete) ? renderStandings(standings, awards(standings, days, data.players, data.settings)) : ''}`;
   } catch (err) {
     showError(app, err);
   }
