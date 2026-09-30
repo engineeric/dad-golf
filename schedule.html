@@ -91,6 +91,8 @@
     }
     .tee__side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
     .tee__side .chip { display: block; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* Singles: the lone card sits in the column next to "VS" so the gap is even on both sides. */
+    .tee__side--red > :only-child { grid-column: 2; }
     /* letter-spacing trails the last glyph; matching left padding keeps "VS" optically centred. */
     .tee__match .vs { color: var(--muted); font-size: 10px; margin: 0 4px; padding-left: 0.22em; text-align: center; }
     .tee__match .label { color: var(--muted); font-size: 9px; }

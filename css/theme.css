@@ -178,6 +178,15 @@ button, select { font: inherit; color: inherit; }
 
 .nav a:hover { border-color: rgba(255, 255, 255, 0.8); color: var(--white); }
 
+.demo-bar {
+  background: var(--gold);
+  color: var(--navy);
+  text-align: center;
+  padding: 6px var(--pad-r) 6px var(--pad-l);
+  font-size: 10px;
+}
+.demo-bar a { color: inherit; }
+
 .nav a[aria-current="page"] {
   background: var(--gold);
   border-color: var(--gold);
