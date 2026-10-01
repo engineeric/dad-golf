@@ -63,6 +63,9 @@ export function showError(target, err) {
   target.innerHTML = `<div class="notice notice--error"><strong>Couldn't load tournament data.</strong><br>${esc(err.message)}</div>`;
 }
 
+/** Prize tile/chip pieces shared by Scoreboard and Schedule. */
+export const holeBadge = (hole) => `<span class="hole-no" aria-label="Hole ${hole ?? ''}">${hole ?? '—'}</span>`;
+
 export function playerChip(name, side, { me, label } = {}) {
   return `<span class="chip chip--${side}${me && name === me ? ' chip--me' : ''}">
     ${label ? `<small>${esc(label)}</small>` : ''}${esc(name)}
@@ -70,6 +73,7 @@ export function playerChip(name, side, { me, label } = {}) {
 }
 
 export const ICONS = {
+  flag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21V4"/><path d="M6 4h11l-2.5 4L17 12H6"/></svg>',
   trophy: '<svg viewBox="12 2 40 69" fill="currentColor"><circle cx="32" cy="6" r="2.6"/><path d="M24 14 Q32 7 40 14 Z"/><rect x="22" y="14" width="20" height="2.5" rx="1"/><path d="M23 18 H41 C41 32 38 40 32 42 C26 40 23 32 23 18 Z"/><path d="M23 21 C14 21 14 34 26 36 M41 21 C50 21 50 34 38 36" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><rect x="30.6" y="42" width="2.8" height="12"/><ellipse cx="32" cy="48" rx="3.4" ry="1.6"/><path d="M25 55 H39 L41 64 H23 Z"/><rect x="19" y="65.5" width="26" height="4" rx="1"/></svg>',
   star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>',
   pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>',

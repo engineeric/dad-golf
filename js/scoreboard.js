@@ -3,7 +3,7 @@ import {
   SIDES, TOTAL_POINTS, TO_WIN, awards, buildDays, dayTitle, formatDate, formatPts, formatTime, isDayComplete,
   formatPlaying, playerStandings, points, sideHandicap, strokes, tournamentStart, usesCourseHandicap,
 } from './golf.js';
-import { ICONS, applyEdition, esc, playerChip, renderChrome, showError, withDemo } from './ui.js';
+import { ICONS, applyEdition, esc, holeBadge, playerChip, renderChrome, showError, withDemo } from './ui.js';
 
 const REFRESH_MS = 60_000;
 
@@ -164,18 +164,35 @@ function renderDay(day, players, settings, collapsible) {
             <span class="fg-red">${formatPts(pts.red)}</span><span class="dash">|</span><span class="fg-blue">${formatPts(pts.blue)}</span>
           </div>` : ''}
       </header>`;
+  const prizes = renderPrizes(day, players);
   if (collapsible) {
     return `
       <details class="card day-card" id="day-${day.round}" data-day="${day.round}"${openDays.has(day.round) ? ' open' : ''}>
         <summary>${head}</summary>
         <ol class="matches">${rows}</ol>
+        ${prizes}
       </details>`;
   }
   return `
     <section class="card" id="day-${day.round}">
       ${head}
       <ol class="matches">${rows}</ol>
+      ${prizes}
     </section>`;
+}
+
+/** The day's hole prizes as tiles: hole, prize and winner once awarded. */
+function renderPrizes(day, players) {
+  if (!day.prizes.length) return '';
+  const tiles = day.prizes.map((p) => {
+    const side = players.get(p.winner)?.side;
+    return `
+      <div class="prize">
+        <div class="prize__title">${holeBadge(p.hole)}<span class="eyebrow">${esc(p.prize)}</span></div>
+        ${p.winner ? (side ? playerChip(p.winner, side) : `<strong>${esc(p.winner)}</strong>`) : '<span class="tba">Not awarded yet</span>'}
+      </div>`;
+  }).join('');
+  return `<div class="prizes"><span class="eyebrow prizes__label">Hole prizes</span><div class="prizes__grid">${tiles}</div></div>`;
 }
 
 /** Which handicap the day's HCP figures use, only worth saying when course handicaps are on. */
@@ -213,6 +230,14 @@ function renderAward(title, award) {
 }
 
 function renderLog(entry) {
+  if (entry.type === 'prize') {
+    return `
+      <li class="log__row">
+        <span class="eyebrow">Day ${entry.round}</span>
+        <span class="log__who">${holeBadge(entry.hole)}<span>${esc(entry.prize)}</span></span>
+        <span class="log__res res--P">Prize</span>
+      </li>`;
+  }
   const res = entry.outcome === 'H' ? 'Halved' : `${entry.outcome} ${entry.result}`.trim();
   return `
     <li class="log__row">
@@ -235,6 +260,7 @@ function renderStandings(standings, stats) {
         <span class="num lb__pts">${formatPts(r.points)}</span>
         <span class="num">${record(r)}</span>
         <span class="num ${r.net > 0 ? 'pos' : r.net < 0 ? 'neg' : ''}">${signed(r.net)}</span>
+        <span class="num${r.prizes ? '' : ' muted'}">${r.prizes || '—'}</span>
         <span class="num lb__best">${r.best ? esc(r.best.text) : '—'}</span>
       </summary>
       <ol class="log">${r.log.length ? r.log.map(renderLog).join('') : '<li class="log__row muted">No matches yet</li>'}</ol>
@@ -250,7 +276,7 @@ function renderStandings(standings, stats) {
       </div>
       <div class="card">
         <header class="lb__title"><h2>Player standings</h2><span class="eyebrow">Tap a player for match log</span></header>
-        <div class="lb__row lb__head eyebrow"><span>#</span><span>Player</span><span class="num">Pts</span><span class="num">W-L-H</span><span class="num">Net</span><span class="num lb__best">Best</span></div>
+        <div class="lb__row lb__head eyebrow"><span>#</span><span>Player</span><span class="num">Pts</span><span class="num">W-L-H</span><span class="num">Net</span><span class="num lb__prz" title="Hole prizes won">${ICONS.flag}<span class="visually-hidden">Hole prizes</span></span><span class="num lb__best">Best</span></div>
         ${rows}
       </div>
     </section>`;

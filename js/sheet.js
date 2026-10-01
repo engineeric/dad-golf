@@ -221,12 +221,26 @@ function normalizeSettings(rows, playerRows) {
   };
 }
 
+/** Hole prizes (closest to the pin etc.); Winner stays blank until awarded. */
+function normalizePrizes(rows, aliases) {
+  return (rows ?? [])
+    .map((r, i) => ({
+      row: i,
+      round: num(r.round),
+      hole: num(r.hole),
+      prize: r.prize || '',
+      winner: r.winner ? aliases.get(key(r.winner)) ?? r.winner : '',
+    }))
+    .filter((p) => p.round != null && p.prize);
+}
+
 export async function loadData() {
-  const [players, matches, schedule, settings] = await Promise.all([
+  const [players, matches, schedule, settings, prizes] = await Promise.all([
     fetchTab('Players', ['team', 'flight']),
     fetchTab('Matches', ['round', 'red1', 'blue1', 'winner']),
     fetchTab('Schedule', ['round', 'format', 'course']),
     fetchTab('Settings', ['timezone']),
+    fetchTab('Prizes', ['round', 'hole', 'prize']),
   ]);
   if (!players) throw new Error('The "Players" tab is missing from the sheet.');
   const normalizedSettings = normalizeSettings(settings, players);
@@ -237,6 +251,7 @@ export async function loadData() {
     players: roster.players,
     matches: normalizeMatches(matches ?? [], normalizedSettings.teams, roster.aliases),
     schedule: normalizeSchedule(schedule),
+    prizes: normalizePrizes(prizes, roster.aliases),
     settings: normalizedSettings,
   };
 }

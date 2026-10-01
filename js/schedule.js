@@ -1,7 +1,7 @@
 import { loadData } from './sheet.js';
 import { buildDays, dayTitle, formatDate, formatTime, teeGroups } from './golf.js';
 import { buildEvent, downloadICS, googleCalendarUrl } from './calendar.js';
-import { applyEdition, ICONS, esc, playerChip, renderChrome, showError } from './ui.js';
+import { applyEdition, ICONS, esc, holeBadge, playerChip, renderChrome, showError } from './ui.js';
 
 renderChrome('schedule');
 const app = document.getElementById('app');
@@ -51,6 +51,7 @@ function eventFor(day) {
     day.formatInfo ? `${day.formatInfo.title} (${day.formatInfo.sub})` : null,
     day.course ? `Course: ${day.course}` : null,
     day.tees ? `Tees: ${day.tees}${ratingSuffix(day)}` : null,
+    day.prizes.length ? `Hole prizes: ${day.prizes.map((p) => `#${p.hole ?? '?'} ${p.prize}`).join(', ')}` : null,
     mine?.teeTime ? `${me}'s tee time: ${formatTime(mine.teeTime)}` : null,
     groups.some((g) => g.teeTime) ? '' : null,
     ...groups.filter((g) => g.teeTime).map((g) =>
@@ -155,6 +156,7 @@ function renderDay(day) {
             : '<span class="tba">Map available once the course is set</span>'}
         </div>
       </div>
+      ${renderPrizeHoles(day)}
       <div class="teesheet">
         <div class="teesheet__head">
           <span class="eyebrow">Tee Sheet</span>
@@ -163,6 +165,21 @@ function renderDay(day) {
         ${renderTeeSheet(day)}
       </div>
     </section>`;
+}
+
+/** The day's prize holes, so players know where to go for it; shows winners once awarded. */
+function renderPrizeHoles(day) {
+  if (!day.prizes.length) return '';
+  const sideOf = (name) => data.players.find((p) => p.name === name)?.side;
+  return `
+    <div class="prize-holes">
+      <span class="eyebrow">Hole prizes</span>
+      ${day.prizes.map((p) => `
+        <span class="prize-hole">
+          ${holeBadge(p.hole)}<span>${esc(p.prize)}</span>
+          ${p.winner && sideOf(p.winner) ? playerChip(p.winner, sideOf(p.winner), { me }) : ''}
+        </span>`).join('')}
+    </div>`;
 }
 
 function render() {

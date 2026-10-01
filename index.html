@@ -166,7 +166,7 @@
     .lb__title .eyebrow { color: var(--muted); font-size: 10px; }
     .lb__row {
       display: grid;
-      grid-template-columns: 32px minmax(0, 1fr) 56px 76px 56px 72px;
+      grid-template-columns: 32px minmax(0, 1fr) 56px 76px 56px 44px 72px;
       align-items: center;
       gap: 10px;
       padding: 12px 20px;
@@ -191,7 +191,16 @@
     .log__res { font-weight: 700; white-space: nowrap; }
     .res--W { color: #3b6d11; }
     .res--L { color: var(--fg-red); }
-    .res--H { color: var(--gold); }
+    .res--H, .res--P { color: var(--gold); }
+    .lb__prz svg { width: 13px; height: 13px; vertical-align: -2px; }
+
+    .prizes { border-top: 1px solid var(--rule); padding: 14px 20px 16px; background: rgba(204, 166, 92, 0.07); }
+    .prizes__label { color: var(--gold); font-size: 10px; }
+    .prizes__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin-top: 10px; }
+    .prize { background: var(--surface); border: 1px solid var(--rule); border-radius: 4px; padding: 10px 12px; display: grid; gap: 6px; justify-items: start; }
+    .prize__title { display: flex; align-items: center; gap: 8px; }
+    .prize__title .eyebrow { color: var(--muted); font-size: 9px; }
+    .prize .chip { padding: 4px 10px; font-size: 13px; border-top: 0; }
 
     @media (prefers-color-scheme: dark) {
       .pos, .res--W { color: #97c459; }
@@ -217,9 +226,11 @@
       .award { padding: 12px; }
       .award strong { font-size: 17px; }
       .lb__title { flex-direction: column; gap: 2px; padding: 14px 16px; }
-      .lb__row { grid-template-columns: 22px minmax(0, 1fr) 36px 60px 40px; gap: 6px; padding: 11px 14px; font-size: 15px; }
+      .lb__row { grid-template-columns: 22px minmax(0, 1fr) 34px 58px 38px 26px; gap: 6px; padding: 11px 14px; font-size: 15px; }
       .lb__best { display: none; }
       .log { padding: 2px 14px 12px 42px; }
+      .prizes { padding: 12px 14px 14px; }
+      .prizes__grid { grid-template-columns: 1fr 1fr; gap: 8px; }
       .log__row { grid-template-columns: 44px minmax(0, 1fr); }
       .log__res { grid-column: 2; }
       .round__head { flex-direction: column; align-items: flex-start; }

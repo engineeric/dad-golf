@@ -39,6 +39,20 @@ const MATCHES = [
   [3, '10:30 AM', 'Jeff', '', 'Landon', '', 'Eric', '2 UP'],
 ];
 
+// [round, hole, prize, winner]; winners only show for rounds that have been played.
+const PRIZES = [
+  [1, 4, 'Closest to the Pin', 'JK'],
+  [1, 12, 'Longest Drive', 'JD'],
+  [1, 16, 'Closest to the Pin', 'Nate'],
+  [1, 18, 'Longest Putt', 'Cole'],
+  [2, 7, 'Closest to the Pin', 'Eric'],
+  [2, 11, 'Longest Drive', 'Garrett'],
+  [2, 17, 'Closest to the Pin', 'JK'],
+  [3, 3, 'Closest to the Pin', 'Landon'],
+  [3, 9, 'Longest Drive', 'Brandon'],
+  [3, 15, 'Closest to the Pin', 'Jeff'],
+];
+
 const csvRow = (cells) => cells.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',');
 
 /** Days until round 1, and which rounds have results posted. */
@@ -71,6 +85,8 @@ export function demoTabs(name) {
 
   return {
     Players: PLAYERS,
+    Prizes: [csvRow(['Round', 'Hole', 'Prize', 'Winner']),
+      ...PRIZES.map((p) => csvRow(p[0] <= s.played ? p : [...p.slice(0, 3), '']))].join('\n'),
     Matches: [csvRow(['Round', 'Tee Time', 'Red 1', 'Red 2', 'Blue 1', 'Blue 2', 'Winner', 'Result']), ...matches.map(csvRow)].join('\n'),
     Schedule: [
       csvRow(['Round', 'Format', 'Date', 'Course', 'Course URL', 'Address', 'Tees', 'Yardage', 'Par', 'Rating', 'Slope', 'Notes']),

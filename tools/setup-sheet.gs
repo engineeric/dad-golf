@@ -91,6 +91,17 @@ function setupSheet() {
   schedule.getRange(2, sched('Rating'), 3).setNumberFormat('0.0');
   schedule.getRange(2, sched('Slope'), 3).setNumberFormat('0');
 
+  // ---------- Prizes (hole prizes; Winner left blank until awarded) ----------
+  const prizes = createTab(ss, 'Prizes', ['Round', 'Hole', 'Prize', 'Winner'], log);
+  const prize = (h) => ensureColumn(prizes, h, log).index;
+  prizes.getRange(2, prize('Round'), rows).setDataValidation(list(['1', '2', '3'])).setHorizontalAlignment('center');
+  prizes.getRange(2, prize('Hole'), rows).setHorizontalAlignment('center')
+    .setDataValidation(SpreadsheetApp.newDataValidation().requireNumberBetween(1, 18).setAllowInvalid(false).build());
+  // Suggestions only: other prize names can be typed in.
+  prizes.getRange(2, prize('Prize'), rows).setDataValidation(SpreadsheetApp.newDataValidation()
+    .requireValueInList(['Closest to the Pin', 'Longest Drive', 'Longest Putt'], true).setAllowInvalid(true).build());
+  prizes.getRange(2, prize('Winner'), rows).setDataValidation(fromRange(playerNames));
+
   SpreadsheetApp.getUi().alert(log.length ? log.join('\n') : 'Everything is already set up.');
 }
 

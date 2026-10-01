@@ -57,7 +57,7 @@ export function isDayComplete(day) {
 export function playerStandings(days, players) {
   const rows = new Map();
   const row = (name, side) => {
-    if (!rows.has(name)) rows.set(name, { name, side, points: 0, w: 0, l: 0, h: 0, net: 0, best: null, log: [] });
+    if (!rows.has(name)) rows.set(name, { name, side, points: 0, w: 0, l: 0, h: 0, net: 0, best: null, prizes: 0, log: [] });
     return rows.get(name);
   };
   for (const p of players) row(p.name, p.side);
@@ -86,6 +86,12 @@ export function playerStandings(days, players) {
           });
         }
       }
+    }
+    for (const prize of day.prizes ?? []) {
+      const r = prize.winner && rows.get(prize.winner);
+      if (!r) continue;
+      r.prizes += 1;
+      r.log.push({ type: 'prize', round: day.round, hole: prize.hole, prize: prize.prize });
     }
   }
 
@@ -203,7 +209,7 @@ function inferFormat(matches) {
 }
 
 /** Merges Schedule rows and Matches into one entry per day, always DAYS long. */
-export function buildDays({ schedule, matches }) {
+export function buildDays({ schedule, matches, prizes = [] }) {
   return Array.from({ length: DAYS }, (_, i) => {
     const round = i + 1;
     const info = schedule.find((d) => d.round === round) ?? {};
@@ -227,6 +233,7 @@ export function buildDays({ schedule, matches }) {
       slope: info.slope ?? '',
       notes: info.notes ?? '',
       matches: dayMatches,
+      prizes: prizes.filter((p) => p.round === round).sort((a, b) => (a.hole ?? 99) - (b.hole ?? 99) || a.row - b.row),
     };
   });
 }
