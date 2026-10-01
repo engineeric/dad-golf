@@ -167,18 +167,14 @@ function renderDay(day) {
     </section>`;
 }
 
-/** The day's prize holes, so players know where to go for it; shows winners once awarded. */
+/** The day's prize holes, so players know where to go for it. Winners are results, so they live on the Scoreboard. */
 function renderPrizeHoles(day) {
   if (!day.prizes.length) return '';
-  const sideOf = (name) => data.players.find((p) => p.name === name)?.side;
   return `
     <div class="prize-holes">
       <span class="eyebrow">Hole prizes</span>
       ${day.prizes.map((p) => `
-        <span class="prize-hole">
-          ${holeBadge(p.hole)}<span>${esc(p.prize)}</span>
-          ${p.winner && sideOf(p.winner) ? playerChip(p.winner, sideOf(p.winner), { me }) : ''}
-        </span>`).join('')}
+        <span class="prize-hole">${holeBadge(p.hole)}<span>${esc(p.prize)}</span></span>`).join('')}
     </div>`;
 }
 
