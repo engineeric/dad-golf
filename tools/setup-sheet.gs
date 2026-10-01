@@ -102,7 +102,10 @@ function setupSheet() {
     .requireValueInList(['Closest to the Pin', 'Longest Drive', 'Longest Putt'], true).setAllowInvalid(true).build());
   prizes.getRange(2, prize('Winner'), rows).setDataValidation(fromRange(playerNames));
 
-  SpreadsheetApp.getUi().alert(log.length ? log.join('\n') : 'Everything is already set up.');
+  const summary = log.length ? log.join('\n') : 'Everything is already set up.';
+  console.log(summary);
+  const ui = getUi();
+  if (ui) ui.alert(summary);
 }
 
 // ---------- Helpers ----------
@@ -159,9 +162,22 @@ function valueUnder(sheet, header) {
   return String(sheet.getRange(2, headers(sheet).indexOf(header) + 1).getValue());
 }
 
+/** The sheet's UI, or null when run without the spreadsheet open (e.g. from the editor or a trigger). */
+function getUi() {
+  try {
+    return SpreadsheetApp.getUi();
+  } catch (e) {
+    return null;
+  }
+}
+
 function askRedTeam(teamNames) {
   if (teamNames.length < 2) return teamNames[0] || 'Red';
-  const ui = SpreadsheetApp.getUi();
+  const ui = getUi();
+  if (!ui) {
+    console.log('No sheet UI to ask which team is red; using ' + teamNames[0] + '. Change Settings > Red Team if needed.');
+    return teamNames[0];
+  }
   const answer = ui.prompt('Team colours', 'Which team plays in red? (' + teamNames.join(' or ') + ')', ui.ButtonSet.OK);
   const typed = answer.getResponseText().trim().toLowerCase();
   return teamNames.find((t) => t.toLowerCase() === typed) || teamNames[0];
