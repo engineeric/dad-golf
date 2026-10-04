@@ -1,7 +1,7 @@
 import { loadData } from './sheet.js';
 import {
   SIDES, TOTAL_POINTS, TO_WIN, awards, buildDays, dayTitle, formatDate, formatPts, formatTime, isDayComplete,
-  formatPlaying, playerStandings, points, sideHandicap, strokes, tournamentStart, usesCourseHandicap,
+  dayInProgress, formatPlaying, playerStandings, points, sideHandicap, strokes, tournamentStart, usesCourseHandicap,
 } from './golf.js';
 import { ICONS, applyEdition, esc, holeBadge, playerChip, renderChrome, showError, withDemo } from './ui.js';
 
@@ -50,7 +50,10 @@ function renderBanner(pts, played, days, settings) {
   let title;
   let tint = null;
   start = null;
-  if (winner) title = `Team ${teams[winner]} Wins the Cup`;
+  // While a day is being played, just name the day; the score returns once its results are all in.
+  const live = dayInProgress(days, settings.timezone);
+  if (live) title = `Day ${live.round}`;
+  else if (winner) title = `Team ${teams[winner]} Wins the Cup`;
   else if (played === TOTAL_POINTS) title = `Halved ${score}`;
   else if (!played) {
     const next = tournamentStart(days, settings.timezone);
@@ -58,7 +61,7 @@ function renderBanner(pts, played, days, settings) {
     else if (next.at > Date.now()) {
       start = next;
       title = `Tees Off ${formatDate(next.day.date)}${next.teeTime ? ` · ${formatTime(next.teeTime)}` : ''}`;
-    } else title = `Day ${next.day.round} Underway`;
+    } else title = `Day ${next.day.round}`;
   } else if (lead) {
     const other = lead === 'red' ? 'blue' : 'red';
     title = `Team ${teams[lead]} Leads ${formatPts(pts[lead])}–${formatPts(pts[other])}`;

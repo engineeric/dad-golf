@@ -281,12 +281,23 @@ export function zonedTime(date, time, timeZone) {
 }
 
 /** When play begins: the earliest dated day and its first tee time (if posted). */
+const firstTee = (day) => day.matches.find((m) => m.teeTime)?.teeTime ?? null;
+
+/** When a day's play starts: its first tee time, or midnight if none is posted. */
+export const dayStart = (day, timeZone) => zonedTime(day.date, firstTee(day), timeZone);
+
+const byDate = (a, b) => Date.UTC(a.date.y, a.date.m - 1, a.date.d) - Date.UTC(b.date.y, b.date.m - 1, b.date.d);
+
 export function tournamentStart(days, timeZone) {
-  const first = days.filter((d) => d.date)
-    .sort((a, b) => Date.UTC(a.date.y, a.date.m - 1, a.date.d) - Date.UTC(b.date.y, b.date.m - 1, b.date.d))[0];
+  const first = days.filter((d) => d.date).sort(byDate)[0];
   if (!first) return null;
-  const teeTime = first.matches.find((m) => m.teeTime)?.teeTime ?? null;
-  return { day: first, teeTime, at: zonedTime(first.date, teeTime, timeZone) };
+  return { day: first, teeTime: firstTee(first), at: dayStart(first, timeZone) };
+}
+
+/** The day being played: the most recent day that has started but doesn't have all its results in. */
+export function dayInProgress(days, timeZone, now = Date.now()) {
+  const latest = days.filter((d) => d.date && dayStart(d, timeZone) <= now).sort(byDate).at(-1);
+  return latest && !isDayComplete(latest) ? latest : null;
 }
 
 export const formatHcp =(n) => (n == null ? '—' : n.toFixed(1));
