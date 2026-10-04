@@ -49,15 +49,13 @@ function renderBanner(pts, played, days, settings) {
   const score = `${formatPts(pts.red)}–${formatPts(pts.blue)}`;
   let title;
   let tint = null;
-  start = null;
-  // Countdown runs to the first tee time once posted (otherwise to midnight of day 1).
+  // The countdown is independent of the title: it runs under whatever the banner says until the
+  // first tee time (or midnight of day 1 when no tee time is posted).
   const next = tournamentStart(days, settings.timezone);
-  // While a day is being played, just name the day; the score returns once its results are all in.
+  start = !played && next && next.at > Date.now() ? next : null;
+  // From midnight of a day until all its results are in, the banner just names the day.
   const live = dayInProgress(days, settings.timezone);
-  if (!played && next && next.at > Date.now()) {
-    start = next;
-    title = `The Daddy Invitational ${settings.edition}`;
-  } else if (live) title = `Day ${live.round}`;
+  if (live) title = `Day ${live.round}`;
   else if (winner) title = `Team ${teams[winner]} Wins the Cup`;
   else if (played === TOTAL_POINTS) title = `Halved ${score}`;
   else if (!played) title = `The Daddy Invitational ${settings.edition}`;
