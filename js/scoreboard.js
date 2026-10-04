@@ -56,7 +56,7 @@ function renderBanner(pts, played, days, settings) {
   const live = dayInProgress(days, settings.timezone);
   if (!played && next && next.at > Date.now()) {
     start = next;
-    title = `Tees Off ${formatDate(next.day.date)}${next.teeTime ? ` · ${formatTime(next.teeTime)}` : ''}`;
+    title = `The Daddy Invitational ${settings.edition}`;
   } else if (live) title = `Day ${live.round}`;
   else if (winner) title = `Team ${teams[winner]} Wins the Cup`;
   else if (played === TOTAL_POINTS) title = `Halved ${score}`;
