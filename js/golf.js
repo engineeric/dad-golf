@@ -294,9 +294,9 @@ export function tournamentStart(days, timeZone) {
   return { day: first, teeTime: firstTee(first), at: dayStart(first, timeZone) };
 }
 
-/** The day being played: the most recent day that has started but doesn't have all its results in. */
+/** The day being played: the most recent day whose date has begun (midnight) without all its results in. */
 export function dayInProgress(days, timeZone, now = Date.now()) {
-  const latest = days.filter((d) => d.date && dayStart(d, timeZone) <= now).sort(byDate).at(-1);
+  const latest = days.filter((d) => d.date && zonedTime(d.date, null, timeZone) <= now).sort(byDate).at(-1);
   return latest && !isDayComplete(latest) ? latest : null;
 }
 
