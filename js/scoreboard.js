@@ -50,19 +50,18 @@ function renderBanner(pts, played, days, settings) {
   let title;
   let tint = null;
   start = null;
+  // Countdown runs to the first tee time once posted (otherwise to midnight of day 1).
+  const next = tournamentStart(days, settings.timezone);
   // While a day is being played, just name the day; the score returns once its results are all in.
   const live = dayInProgress(days, settings.timezone);
-  if (live) title = `Day ${live.round}`;
+  if (!played && next && next.at > Date.now()) {
+    start = next;
+    title = `Tees Off ${formatDate(next.day.date)}${next.teeTime ? ` · ${formatTime(next.teeTime)}` : ''}`;
+  } else if (live) title = `Day ${live.round}`;
   else if (winner) title = `Team ${teams[winner]} Wins the Cup`;
   else if (played === TOTAL_POINTS) title = `Halved ${score}`;
-  else if (!played) {
-    const next = tournamentStart(days, settings.timezone);
-    if (!next) title = `The Daddy Invitational ${settings.edition}`;
-    else if (next.at > Date.now()) {
-      start = next;
-      title = `Tees Off ${formatDate(next.day.date)}${next.teeTime ? ` · ${formatTime(next.teeTime)}` : ''}`;
-    } else title = `Day ${next.day.round}`;
-  } else if (lead) {
+  else if (!played) title = `The Daddy Invitational ${settings.edition}`;
+  else if (lead) {
     const other = lead === 'red' ? 'blue' : 'red';
     title = `Team ${teams[lead]} Leads ${formatPts(pts[lead])}–${formatPts(pts[other])}`;
     tint = lead;
