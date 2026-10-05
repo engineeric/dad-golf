@@ -114,10 +114,10 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 - **Stroke killer:** won while *giving* the most strokes. If nobody did, the card becomes **Against the odds**, the win that *received* the most strokes.
 - **Tournament MVP:** the commissioner's pick from Settings `MVP`. It's shown as its own card only when set; it isn't highlighted in the table.
 
-**Scoreboard banner** (by calendar day in the Settings timezone, not tee times)
-- Before day 1: tournament name + "N days to go".
-- On day N before all its results are in: "Day N".
-- On day N once complete: "Day N" + score summary (leader, all square). On the final day, the score summary alone is the headline ("Team X Wins the Cup").
+**Scoreboard banner** (one line, always navy; by calendar day in the Settings timezone, not tee times)
+- Before day 1: "N days to go".
+- From midnight on each day: "Day N".
+- Once all 16 matches have results: "Final".
 
 **End of tournament**
 - A team reaching 8½ gets the gold "Ryder" trophy SVG on its hero card.

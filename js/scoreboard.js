@@ -14,43 +14,19 @@ const banner = document.getElementById('banner');
 // Expanded <details> survive the auto-refresh re-render.
 const openPlayers = new Set();
 const openDays = new Set();
-/** Overall score as a headline: winner, halved, leader or all square. */
-function scoreSummary(pts, played, teams) {
-  const lead = pts.red > pts.blue ? 'red' : pts.blue > pts.red ? 'blue' : null;
-  const winner = SIDES.find((side) => pts[side] >= TO_WIN);
-  if (winner) return { text: `Team ${teams[winner]} Wins the Cup`, tint: null };
-  const score = (a, b) => `${formatPts(pts[a])}–${formatPts(pts[b])}`;
-  if (played === TOTAL_POINTS) return { text: `Halved ${score('red', 'blue')}`, tint: null };
-  if (lead) return { text: `Team ${teams[lead]} Leads ${score(lead, lead === 'red' ? 'blue' : 'red')}`, tint: lead };
-  return { text: `All Square ${score('red', 'blue')}`, tint: null };
-}
-
-/**
- * Before day 1: tournament name and days to go. On each day: "Day N", plus the score once that
- * day's results are all in. Once the final day is complete, the score is the headline.
- */
-function renderBanner(pts, played, days, settings) {
+/** One line: days to go before day 1, "Day N" on each day, "Final" once every match has a result. */
+function renderBanner(played, days, settings) {
   const tz = settings.timezone;
   const today = currentDay(days, tz);
-  const final = datedDays(days).at(-1);
+  const first = datedDays(days)[0];
   let title;
-  let sub = '';
-  let tint = null;
-  if (!today) {
-    title = `The Daddy Invitational ${settings.edition}`;
-    const first = datedDays(days)[0];
-    const n = first ? daysUntil(first.date, tz) : null;
-    if (n) sub = `${n} day${n === 1 ? '' : 's'} to go`;
-  } else if (!isDayComplete(today)) {
-    title = `Day ${today.round}`;
-  } else if (today === final) {
-    ({ text: title, tint } = scoreSummary(pts, played, settings.teams));
-  } else {
-    title = `Day ${today.round}`;
-    sub = scoreSummary(pts, played, settings.teams).text;
-  }
-  banner.className = `banner${tint ? ` bg-${tint}` : ''}`;
-  banner.innerHTML = `<h1>${esc(title)}</h1>${sub ? `<p class="banner__sub">${esc(sub)}</p>` : ''}`;
+  if (played === TOTAL_POINTS) title = 'Final';
+  else if (today) title = `Day ${today.round}`;
+  else if (first) {
+    const n = daysUntil(first.date, tz);
+    title = `${n} day${n === 1 ? '' : 's'} to go`;
+  } else title = `The Daddy Invitational ${settings.edition}`;
+  banner.innerHTML = `<h1>${esc(title)}</h1>`;
 }
 
 function heroStatus(pts, played, teams) {
@@ -275,7 +251,7 @@ async function refresh() {
     const all = days.flatMap((d) => d.matches);
     const pts = points(all);
     const played = all.filter((m) => m.winner).length;
-    renderBanner(pts, played, days, data.settings);
+    renderBanner(played, days, data.settings);
     const standings = playerStandings(days, data.players);
     const final = played === TOTAL_POINTS;
     app.innerHTML = `
