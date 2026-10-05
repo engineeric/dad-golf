@@ -483,10 +483,33 @@ main {
 .muted { color: var(--muted); }
 .tba { color: var(--muted); font-style: italic; }
 
-.loading {
-  padding: 60px 0;
-  text-align: center;
-  color: var(--muted);
+/* Crest loader ("team chase"): red and blue arcs circling the edition crest. */
+.loader { display: grid; justify-items: center; gap: 18px; padding: 72px 0; }
+.loader__crest { position: relative; width: 96px; height: 96px; display: grid; place-items: center; }
+.loader__crest svg { position: absolute; inset: 0; animation: loader-spin 1.6s linear infinite; }
+.loader__mark {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border: 2px solid var(--gold);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--navy);
+  color: var(--gold);
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 24px;
+}
+.loader > .eyebrow { color: var(--muted); font-size: 10px; }
+@keyframes loader-spin { to { transform: rotate(360deg); } }
+
+/* Skeleton placeholders (Scoreboard). */
+.skel { display: block; background: var(--rule); border-radius: 3px; animation: skel-pulse 1.2s ease-in-out infinite alternate; }
+@keyframes skel-pulse { from { opacity: 0.55; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .loader__crest svg, .skel { animation: none; }
 }
 
 @media (max-width: 720px) {

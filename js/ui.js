@@ -42,6 +42,7 @@ export function renderChrome(pageId) {
       </nav>
     </div>
     ${DEMO ? `<div class="demo-bar eyebrow">Demo data · ${esc(DEMO)} · <a href="${location.pathname}">Exit demo</a></div>` : ''}`;
+  document.querySelectorAll('.loader__mark').forEach((el) => { el.textContent = edition; });
   document.querySelector('.site-footer').innerHTML = `
     <div class="site-footer__inner">
       <span class="eyebrow">The Daddy Invitational · <span class="edition">${esc(edition)}</span></span>
@@ -51,7 +52,7 @@ export function renderChrome(pageId) {
 /** Updates the edition numeral (e.g. "IV") everywhere it appears, including the favicon. */
 export function applyEdition(edition) {
   try { localStorage.setItem(EDITION_KEY, edition); } catch { /* storage unavailable */ }
-  document.querySelectorAll('.brand__mark, .site-footer .edition').forEach((el) => { el.textContent = edition; });
+  document.querySelectorAll('.brand__mark, .site-footer .edition, .loader__mark').forEach((el) => { el.textContent = edition; });
   const size = edition.length <= 2 ? 24 : Math.max(12, 48 / edition.length);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="29" fill="none" stroke="#cca65c" stroke-width="3.5"/><text x="32" y="32" dy="0.35em" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="${size}" fill="#cca65c">${esc(edition)}</text></svg>`;
   const icon = document.querySelector('link[rel="icon"]');

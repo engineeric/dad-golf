@@ -11,6 +11,17 @@
   <style>
 
 
+    /* Loading skeleton, shaped like the hero and day cards to avoid layout shift. */
+    .skel--banner { display: inline-block; width: 150px; height: 0.8em; vertical-align: middle; background: rgba(255, 255, 255, 0.16); }
+    .skeleton { display: grid; gap: 26px; }
+    .skel-hero { display: grid; grid-template-columns: 1fr minmax(180px, 0.8fr) 1fr; min-height: 204px; }
+    .skel-hero .skel { border-radius: 0; }
+    .skel--red { background: var(--red); opacity: 0.7; }
+    .skel--navy { background: var(--navy); }
+    .skel--blue { background: var(--blue); opacity: 0.7; }
+    .skel-card { padding: 18px 20px; display: grid; gap: 12px; }
+    .skel-row { height: 52px; }
+
     .hero {
       display: grid;
       grid-template-columns: 1fr minmax(180px, 0.8fr) 1fr;
@@ -194,6 +205,8 @@
     }
 
     @media (max-width: 720px) {
+      .skel-hero { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 52px; min-height: 196px; }
+      .skel-hero .skel--navy { grid-column: 1 / -1; grid-row: 2; }
       .hero { grid-template-columns: 1fr 1fr; }
       .hero__mid { grid-column: 1 / -1; grid-row: 2; flex-direction: row; justify-content: center; gap: 12px; padding: 12px; }
       .hero__mid strong { font-size: 28px; }
@@ -227,8 +240,24 @@
 </head>
 <body>
   <header class="site-header"></header>
-  <div class="banner" id="banner"><h1>The Daddy Invitational</h1></div>
-  <main id="app"><div class="loading">Loading scoreboard…</div></main>
+  <div class="banner" id="banner"><h1><span class="skel skel--banner" aria-hidden="true"></span></h1></div>
+  <main id="app">
+    <div class="skeleton" role="status" aria-label="Loading scoreboard">
+      <div class="card skel-hero" aria-hidden="true">
+        <span class="skel skel--red"></span><span class="skel skel--navy"></span><span class="skel skel--blue"></span>
+      </div>
+      <div class="card skel-card" aria-hidden="true">
+        <span class="skel" style="width: 28%; height: 10px"></span>
+        <span class="skel" style="width: 46%; height: 20px"></span>
+        <span class="skel skel-row"></span><span class="skel skel-row"></span><span class="skel skel-row"></span><span class="skel skel-row"></span>
+      </div>
+      <div class="card skel-card" aria-hidden="true">
+        <span class="skel" style="width: 24%; height: 10px"></span>
+        <span class="skel" style="width: 40%; height: 20px"></span>
+        <span class="skel skel-row"></span><span class="skel skel-row"></span>
+      </div>
+    </div>
+  </main>
   <footer class="site-footer"></footer>
   <script type="module" src="js/scoreboard.js"></script>
 </body>
