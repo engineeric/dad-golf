@@ -1,7 +1,7 @@
 import { loadData } from './sheet.js';
 import {
-  SIDES, TOTAL_POINTS, TO_WIN, awards, buildDays, dayTitle, formatDate, formatPts, formatTime, isDayComplete,
-  dayInProgress, formatPlaying, playerStandings, points, sideHandicap, strokes, tournamentStart, usesCourseHandicap,
+  SIDES, TOTAL_POINTS, TO_WIN, awards, buildDays, currentDay, datedDays, dayTitle, daysUntil, formatDate, formatPts,
+  formatTime, isDayComplete, formatPlaying, playerStandings, points, sideHandicap, strokes, usesCourseHandicap,
 } from './golf.js';
 import { ICONS, applyEdition, esc, holeBadge, playerChip, renderChrome, showError, withDemo } from './ui.js';
 
@@ -11,62 +11,46 @@ renderChrome('scoreboard');
 const app = document.getElementById('app');
 const banner = document.getElementById('banner');
 
-const DAY_MS = 86_400_000;
 // Expanded <details> survive the auto-refresh re-render.
 const openPlayers = new Set();
 const openDays = new Set();
-let start = null; // { day, teeTime, at } until play begins
-
-function countdownParts(ms) {
-  if (!start.teeTime) {
-    const days = Math.ceil(ms / DAY_MS);
-    return [[String(days), days === 1 ? 'Day to go' : 'Days to go']];
-  }
-  const s = Math.floor(ms / 1000);
-  const pad = (n) => String(n).padStart(2, '0');
-  return [
-    [String(Math.floor(s / 86400)), 'Days'],
-    [pad(Math.floor(s / 3600) % 24), 'Hrs'],
-    [pad(Math.floor(s / 60) % 60), 'Min'],
-    [pad(s % 60), 'Sec'],
-  ];
-}
-
-function renderCountdown() {
-  const el = document.getElementById('countdown');
-  if (!el || !start) return;
-  const ms = start.at - Date.now();
-  if (ms <= 0) { start = null; refresh(); return; }
-  el.innerHTML = countdownParts(ms)
-    .map(([n, label]) => `<div><strong>${n}</strong><span class="eyebrow">${label}</span></div>`)
-    .join('');
-}
-
-function renderBanner(pts, played, days, settings) {
-  const { teams } = settings;
+/** Overall score as a headline: winner, halved, leader or all square. */
+function scoreSummary(pts, played, teams) {
   const lead = pts.red > pts.blue ? 'red' : pts.blue > pts.red ? 'blue' : null;
-  const winner = pts.red >= TO_WIN ? 'red' : pts.blue >= TO_WIN ? 'blue' : null;
-  const score = `${formatPts(pts.red)}–${formatPts(pts.blue)}`;
+  const winner = SIDES.find((side) => pts[side] >= TO_WIN);
+  if (winner) return { text: `Team ${teams[winner]} Wins the Cup`, tint: null };
+  const score = (a, b) => `${formatPts(pts[a])}–${formatPts(pts[b])}`;
+  if (played === TOTAL_POINTS) return { text: `Halved ${score('red', 'blue')}`, tint: null };
+  if (lead) return { text: `Team ${teams[lead]} Leads ${score(lead, lead === 'red' ? 'blue' : 'red')}`, tint: lead };
+  return { text: `All Square ${score('red', 'blue')}`, tint: null };
+}
+
+/**
+ * Before day 1: tournament name and days to go. On each day: "Day N", plus the score once that
+ * day's results are all in. Once the final day is complete, the score is the headline.
+ */
+function renderBanner(pts, played, days, settings) {
+  const tz = settings.timezone;
+  const today = currentDay(days, tz);
+  const final = datedDays(days).at(-1);
   let title;
+  let sub = '';
   let tint = null;
-  // The countdown is independent of the title: it runs under whatever the banner says until the
-  // first tee time (or midnight of day 1 when no tee time is posted).
-  const next = tournamentStart(days, settings.timezone);
-  start = !played && next && next.at > Date.now() ? next : null;
-  // From midnight of a day until all its results are in, the banner just names the day.
-  const live = dayInProgress(days, settings.timezone);
-  if (live) title = `Day ${live.round}`;
-  else if (winner) title = `Team ${teams[winner]} Wins the Cup`;
-  else if (played === TOTAL_POINTS) title = `Halved ${score}`;
-  else if (!played) title = `The Daddy Invitational ${settings.edition}`;
-  else if (lead) {
-    const other = lead === 'red' ? 'blue' : 'red';
-    title = `Team ${teams[lead]} Leads ${formatPts(pts[lead])}–${formatPts(pts[other])}`;
-    tint = lead;
-  } else title = `All Square ${score}`;
+  if (!today) {
+    title = `The Daddy Invitational ${settings.edition}`;
+    const first = datedDays(days)[0];
+    const n = first ? daysUntil(first.date, tz) : null;
+    if (n) sub = `${n} day${n === 1 ? '' : 's'} to go`;
+  } else if (!isDayComplete(today)) {
+    title = `Day ${today.round}`;
+  } else if (today === final) {
+    ({ text: title, tint } = scoreSummary(pts, played, settings.teams));
+  } else {
+    title = `Day ${today.round}`;
+    sub = scoreSummary(pts, played, settings.teams).text;
+  }
   banner.className = `banner${tint ? ` bg-${tint}` : ''}`;
-  banner.innerHTML = `<h1>${esc(title)}</h1>${start ? '<div class="countdown" id="countdown" role="timer"></div>' : ''}`;
-  renderCountdown();
+  banner.innerHTML = `<h1>${esc(title)}</h1>${sub ? `<p class="banner__sub">${esc(sub)}</p>` : ''}`;
 }
 
 function heroStatus(pts, played, teams) {
@@ -315,5 +299,4 @@ app.addEventListener('toggle', (e) => {
 
 refresh();
 setInterval(() => { if (!document.hidden) refresh(); }, REFRESH_MS);
-setInterval(renderCountdown, 1000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });

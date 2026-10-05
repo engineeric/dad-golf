@@ -263,42 +263,26 @@ export function formatTime(t) {
   return `${h12}:${String(t.m).padStart(2, '0')} ${t.h < 12 ? 'AM' : 'PM'}`;
 }
 
-/** Offset (ms) of `timeZone` from UTC at instant `t`. */
-function zoneOffset(t, timeZone) {
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat('en-US', {
-      timeZone, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric',
-    }).formatToParts(t).map((p) => [p.type, p.value]),
+/** Today's calendar date in `timeZone`. */
+export function todayIn(timeZone, now = Date.now()) {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', { timeZone, year: 'numeric', month: 'numeric', day: 'numeric' })
+      .formatToParts(now).map((x) => [x.type, x.value]),
   );
-  return Date.UTC(+parts.year, parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second) - t;
+  return { y: +p.year, m: +p.month, d: +p.day };
 }
 
-/** Converts a wall-clock date/time in `timeZone` to an epoch timestamp. */
-export function zonedTime(date, time, timeZone) {
-  const wall = Date.UTC(date.y, date.m - 1, date.d, time?.h ?? 0, time?.m ?? 0);
-  const guess = wall - zoneOffset(wall, timeZone);
-  return wall - zoneOffset(guess, timeZone); // second pass settles DST boundaries
-}
+const dayNumber = (date) => Date.UTC(date.y, date.m - 1, date.d) / 86_400_000;
 
-/** When play begins: the earliest dated day and its first tee time (if posted). */
-const firstTee = (day) => day.matches.find((m) => m.teeTime)?.teeTime ?? null;
+/** Whole calendar days from today (in `timeZone`) until `date`: 0 on the day, negative afterwards. */
+export const daysUntil = (date, timeZone, now = Date.now()) => dayNumber(date) - dayNumber(todayIn(timeZone, now));
 
-/** When a day's play starts: its first tee time, or midnight if none is posted. */
-export const dayStart = (day, timeZone) => zonedTime(day.date, firstTee(day), timeZone);
+/** Dated days in calendar order. */
+export const datedDays = (days) => days.filter((d) => d.date).sort((a, b) => dayNumber(a.date) - dayNumber(b.date));
 
-const byDate = (a, b) => Date.UTC(a.date.y, a.date.m - 1, a.date.d) - Date.UTC(b.date.y, b.date.m - 1, b.date.d);
-
-export function tournamentStart(days, timeZone) {
-  const first = days.filter((d) => d.date).sort(byDate)[0];
-  if (!first) return null;
-  return { day: first, teeTime: firstTee(first), at: dayStart(first, timeZone) };
-}
-
-/** The day being played: the most recent day whose date has begun (midnight) without all its results in. */
-export function dayInProgress(days, timeZone, now = Date.now()) {
-  const latest = days.filter((d) => d.date && zonedTime(d.date, null, timeZone) <= now).sort(byDate).at(-1);
-  return latest && !isDayComplete(latest) ? latest : null;
-}
+/** The most recent day whose date has arrived (midnight in `timeZone`), or null before day 1. */
+export const currentDay = (days, timeZone, now = Date.now()) =>
+  datedDays(days).filter((d) => daysUntil(d.date, timeZone, now) <= 0).at(-1) ?? null;
 
 export const formatHcp =(n) => (n == null ? '—' : n.toFixed(1));
 
