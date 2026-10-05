@@ -45,6 +45,9 @@ export function parseMargin(result) {
   return null;
 }
 
+/** A result from the losing side's view: "2 UP" becomes "2 DOWN"; "3&2" reads the same both ways. */
+export const loserResult = (result) => String(result ?? '').replace(/^(\s*\d+\s*)up(\s*)$/i, '$1DOWN$2');
+
 const other = (side) => (side === 'red' ? 'blue' : 'red');
 
 /** A day counts as complete once every expected match has a winner. */
@@ -169,7 +172,7 @@ export function awards(standings, days, players, settings) {
   const toughestLoss = widest ? {
     names: joinSides(widestMatches, (m) => m[other(m.winner)]),
     side: other(widestMatches[0].winner),
-    label: `Lost ${widestMatches[0].result}`,
+    label: `Lost ${loserResult(widestMatches[0].result)}`,
   } : null;
 
   // Strokes between the sides: positive when the winner gave strokes, negative when they received them.

@@ -1,7 +1,7 @@
 import { loadData } from './sheet.js';
 import {
   SIDES, TOTAL_POINTS, TO_WIN, awards, buildDays, currentDay, datedDays, dayTitle, daysUntil, formatDate, formatPts,
-  formatTime, isDayComplete, formatPlaying, playerStandings, points, sideHandicap, strokes, usesCourseHandicap,
+  formatTime, isDayComplete, loserResult, formatPlaying, playerStandings, points, sideHandicap, strokes, usesCourseHandicap,
 } from './golf.js';
 import { ICONS, applyEdition, esc, holeBadge, playerChip, renderChrome, showError, withDemo } from './ui.js';
 
@@ -198,7 +198,8 @@ function renderLog(entry) {
         <span class="log__res res--P">Prize</span>
       </li>`;
   }
-  const res = entry.outcome === 'H' ? 'Halved' : `${entry.outcome} ${entry.result}`.trim();
+  const result = entry.outcome === 'L' ? loserResult(entry.result) : entry.result;
+  const res = entry.outcome === 'H' ? 'Halved' : `${entry.outcome} ${result}`.trim();
   return `
     <li class="log__row">
       <span class="eyebrow">Day ${entry.round}</span>
