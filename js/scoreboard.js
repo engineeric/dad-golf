@@ -1,7 +1,7 @@
 import { loadData } from './sheet.js';
 import {
-  SIDES, TOTAL_POINTS, TO_WIN, awards, buildDays, dayTitle, formatDate, formatPts, formatTime, isDayComplete,
-  formatPlaying, playerStandings, points, sideHandicap, strokes, tournamentStart, usesCourseHandicap,
+  SIDES, TOTAL_POINTS, TO_WIN, awards, buildDays, currentDay, datedDays, dayTitle, daysUntil, formatDate, formatPts,
+  formatTime, isDayComplete, formatPlaying, playerStandings, points, sideHandicap, strokes, usesCourseHandicap,
 } from './golf.js';
 import { ICONS, applyEdition, esc, holeBadge, playerChip, renderChrome, showError, withDemo } from './ui.js';
 
@@ -11,62 +11,22 @@ renderChrome('scoreboard');
 const app = document.getElementById('app');
 const banner = document.getElementById('banner');
 
-const DAY_MS = 86_400_000;
 // Expanded <details> survive the auto-refresh re-render.
 const openPlayers = new Set();
 const openDays = new Set();
-let start = null; // { day, teeTime, at } until play begins
-
-function countdownParts(ms) {
-  if (!start.teeTime) {
-    const days = Math.ceil(ms / DAY_MS);
-    return [[String(days), days === 1 ? 'Day to go' : 'Days to go']];
-  }
-  const s = Math.floor(ms / 1000);
-  const pad = (n) => String(n).padStart(2, '0');
-  return [
-    [String(Math.floor(s / 86400)), 'Days'],
-    [pad(Math.floor(s / 3600) % 24), 'Hrs'],
-    [pad(Math.floor(s / 60) % 60), 'Min'],
-    [pad(s % 60), 'Sec'],
-  ];
-}
-
-function renderCountdown() {
-  const el = document.getElementById('countdown');
-  if (!el || !start) return;
-  const ms = start.at - Date.now();
-  if (ms <= 0) { start = null; refresh(); return; }
-  el.innerHTML = countdownParts(ms)
-    .map(([n, label]) => `<div><strong>${n}</strong><span class="eyebrow">${label}</span></div>`)
-    .join('');
-}
-
-function renderBanner(pts, played, days, settings) {
-  const { teams } = settings;
-  const lead = pts.red > pts.blue ? 'red' : pts.blue > pts.red ? 'blue' : null;
-  const winner = pts.red >= TO_WIN ? 'red' : pts.blue >= TO_WIN ? 'blue' : null;
-  const score = `${formatPts(pts.red)}–${formatPts(pts.blue)}`;
+/** One line: days to go before day 1, "Day N" on each day, "Final" once every match has a result. */
+function renderBanner(played, days, settings) {
+  const tz = settings.timezone;
+  const today = currentDay(days, tz);
+  const first = datedDays(days)[0];
   let title;
-  let tint = null;
-  start = null;
-  if (winner) title = `Team ${teams[winner]} Wins the Cup`;
-  else if (played === TOTAL_POINTS) title = `Halved ${score}`;
-  else if (!played) {
-    const next = tournamentStart(days, settings.timezone);
-    if (!next) title = `The Daddy Invitational ${settings.edition}`;
-    else if (next.at > Date.now()) {
-      start = next;
-      title = `Tees Off ${formatDate(next.day.date)}${next.teeTime ? ` · ${formatTime(next.teeTime)}` : ''}`;
-    } else title = `Day ${next.day.round} Underway`;
-  } else if (lead) {
-    const other = lead === 'red' ? 'blue' : 'red';
-    title = `Team ${teams[lead]} Leads ${formatPts(pts[lead])}–${formatPts(pts[other])}`;
-    tint = lead;
-  } else title = `All Square ${score}`;
-  banner.className = `banner${tint ? ` bg-${tint}` : ''}`;
-  banner.innerHTML = `<h1>${esc(title)}</h1>${start ? '<div class="countdown" id="countdown" role="timer"></div>' : ''}`;
-  renderCountdown();
+  if (played === TOTAL_POINTS) title = 'Final';
+  else if (today) title = `Day ${today.round}`;
+  else if (first) {
+    const n = daysUntil(first.date, tz);
+    title = `${n} day${n === 1 ? '' : 's'} to go`;
+  } else title = `The Daddy Invitational ${settings.edition}`;
+  banner.innerHTML = `<h1>${esc(title)}</h1>`;
 }
 
 function heroStatus(pts, played, teams) {
@@ -291,7 +251,7 @@ async function refresh() {
     const all = days.flatMap((d) => d.matches);
     const pts = points(all);
     const played = all.filter((m) => m.winner).length;
-    renderBanner(pts, played, days, data.settings);
+    renderBanner(played, days, data.settings);
     const standings = playerStandings(days, data.players);
     const final = played === TOTAL_POINTS;
     app.innerHTML = `
@@ -315,5 +275,4 @@ app.addEventListener('toggle', (e) => {
 
 refresh();
 setInterval(() => { if (!document.hidden) refresh(); }, REFRESH_MS);
-setInterval(renderCountdown, 1000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });

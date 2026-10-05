@@ -32,7 +32,7 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 
 | Scenario | State |
 |---|---|
-| `countdown` | Tee sheets posted, round 1 in 10 days, live countdown |
+| `countdown` | Tee sheets posted, round 1 in 10 days ("10 days to go") |
 | `day1` | Day 1 complete (standings and awards appear), day 2 tee sheet |
 | `midway` | Two days complete, day 3 tee sheet, prizes for days 1–2 |
 | `final` | All 16 matches, Team Eric wins (trophy), MVP = JD, day cards collapse |
@@ -46,7 +46,7 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 
 | File | Role |
 |---|---|
-| `index.html` + `js/scoreboard.js` | Scoreboard: banner/countdown, hero score, Tournament MVP card, day cards with match rows, strokes and hole prizes, then player standings and awards |
+| `index.html` + `js/scoreboard.js` | Scoreboard: banner, hero score, Tournament MVP card, day cards with match rows, strokes and hole prizes, then player standings and awards |
 | `schedule.html` + `js/schedule.js` | Per-day course info, map embed, directions, QR "send to phone", prize holes, tee sheet, "Find me", calendar export |
 | `teams.html` + `js/teams.js` | Rosters by flight, captains, average handicap index |
 | `matchups.html` + `js/matchups.js` | Lineup preview for Matched / Mixed / Singles, with team handicaps and strokes; state is kept in the URL hash |
@@ -114,6 +114,11 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 - **Stroke killer:** won while *giving* the most strokes. If nobody did, the card becomes **Against the odds**, the win that *received* the most strokes.
 - **Tournament MVP:** the commissioner's pick from Settings `MVP`. It's shown as its own card only when set; it isn't highlighted in the table.
 
+**Scoreboard banner** (one line, always navy; by calendar day in the Settings timezone, not tee times)
+- Before day 1: "N days to go".
+- From midnight on each day: "Day N".
+- Once all 16 matches have results: "Final".
+
 **End of tournament**
 - A team reaching 8½ gets the gold "Ryder" trophy SVG on its hero card.
 - When all 16 matches are final, the day cards collapse into `<details>`.
@@ -129,7 +134,6 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 - **Alignment details** that were deliberately tuned (don't regress them):
   - Tee-sheet player chips have equal widths, and "VS" is optically centred: its padding offsets the trailing letter-spacing, and a singles card sits next to "VS".
   - Day scores sit in fixed-width columns.
-  - The countdown labels never wrap.
 - **Icons:** the trophy is a custom single-tone SVG chosen from mockups, not a stock icon.
 - **Copy:** sentence-case UI text and short labels.
 

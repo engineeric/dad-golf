@@ -9,20 +9,7 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/theme.css">
   <style>
-    .banner { transition: background-color 0.3s; }
-    .banner.bg-red, .banner.bg-blue { border-bottom-color: transparent; }
-    .banner.bg-red h1, .banner.bg-blue h1 { color: var(--white); }
 
-    .countdown { display: flex; justify-content: center; gap: 10px; margin-top: 14px; }
-    .countdown div {
-      min-width: 72px;
-      padding: 8px 10px 9px;
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      border-radius: 3px;
-      background: rgba(255, 255, 255, 0.05);
-    }
-    .countdown strong { display: block; font-size: 30px; line-height: 1.1; font-weight: 800; font-variant-numeric: tabular-nums; }
-    .countdown .eyebrow { font-size: 9px; color: rgba(255, 255, 255, 0.7); white-space: nowrap; }
 
     .hero {
       display: grid;
@@ -207,9 +194,6 @@
     }
 
     @media (max-width: 720px) {
-      .countdown { gap: 6px; }
-      .countdown div { min-width: 64px; padding: 6px 10px 7px; }
-      .countdown strong { font-size: 24px; }
       .hero { grid-template-columns: 1fr 1fr; }
       .hero__mid { grid-column: 1 / -1; grid-row: 2; flex-direction: row; justify-content: center; gap: 12px; padding: 12px; }
       .hero__mid strong { font-size: 28px; }
