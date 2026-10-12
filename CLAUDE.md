@@ -49,7 +49,7 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 | `index.html` + `js/scoreboard.js` | Scoreboard: banner, hero score, Tournament MVP card, day cards with match rows, strokes and hole prizes, then player standings and awards |
 | `schedule.html` + `js/schedule.js` | Per-day course info, map embed, directions, QR "send to phone", prize holes, tee sheet, "Find me", calendar export |
 | `teams.html` + `js/teams.js` | Rosters by flight, captains, average handicap index |
-| `matchups.html` + `js/matchups.js` | Lineup preview for Matched / Mixed / Singles, with team handicaps and strokes. Singles disables opponents already met in a 2v2 round, using that day's official Matches rows if posted, else this preview's own 2v2 lineup; "Auto Fill" finds a legal draw. All three lineups are kept in the URL hash. |
+| `matchups.html` + `js/matchups.js` | Lineup preview for Matched / Mixed / Singles, with team handicaps and strokes. Official matchups from the Matches tab are locked in; the rest is editable. Opponents already met in another round are disabled, and Random/Auto Fill retries until it finds a lineup with no rematches. All three lineups are kept in the URL hash. |
 | `js/sheet.js` | Fetches and normalizes the sheet tabs, and handles demo mode |
 | `js/golf.js` | Pure rules: formats, handicaps, scoring, standings, awards, `buildDays` |
 | `js/ui.js` | Header/footer chrome, `esc`, chips, icons (trophy, star, flag), `applyEdition`, `withDemo` |
@@ -89,7 +89,8 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
   - **Matched:** 2v2 with AA and BB pairs, 4 matches.
   - **Mixed:** 2v2 with AB pairs, 4 matches.
   - **Singles:** 1v1, 8 matches, flight-matched: four A v A, then four B v B.
-- **No rematches** (commissioner's rule): a player can face any given opponent only once across all three rounds, so the 2v2 matchups largely decide the singles draw. So far this is enforced only in the Matchups preview for Singles (see below); the 2v2 previews, Scoreboard and sheet don't check it.
+- **No rematches** (commissioner's rule): a player can face any given opponent only once across all three rounds, so the 2v2 matchups largely decide the singles draw. The Matchups preview enforces it in every format (each 2v2 round is checked against the other; singles against both). Nothing validates the Matches tab itself, but an official matchup that breaks the rule shows a red "Rematch" message in the preview.
+- **The Matches tab is the official, locked-in matchups.** Whatever is posted there for a day is copied into that format's preview, tagged "Official" and not editable; only unposted matches can be previewed.
 - **Day for each format:** set by the Schedule `Format` column, not fixed in code. Matchups finds the course for a format by matching the day's Format. The Matchups format buttons are ordered by that schedule and open on the first format played.
 
 **Handicaps**

@@ -73,42 +73,69 @@ function readHash() {
   }
 }
 
-// ---------- No rematches: singles opponents must be new ----------
+// ---------- Official matchups (Matches tab) are locked into the preview ----------
 
-const TWO_V_TWO = ['Matched', 'Mixed'];
+/** Per format, which match slots hold an official matchup and so can't be edited. */
+const locked = Object.fromEntries(MODES.map((m) => [m, []]));
+const isLocked = (match, mode = state.mode) => !!locked[mode][match];
 
-/**
- * The 2v2 matchups that count as already played for a format: the official Matches
- * rows for that day once posted, otherwise the lineup built in this preview.
- */
-function priorMatches(mode) {
-  const day = days.find((d) => d.format === mode);
-  const official = (day?.matches ?? []).filter((m) => m.red.length && m.blue.length);
-  if (official.length) return { official: true, matches: official };
-  return {
-    official: false,
-    matches: state.picks[mode].map((m) => ({ red: m.red.filter(Boolean), blue: m.blue.filter(Boolean) })),
-  };
+const byFlight = (names) => [...names].sort((a, b) => (byName(a)?.flight ?? '').localeCompare(byName(b)?.flight ?? ''));
+
+/** Copies each day's posted Matches rows into the matching slots of that format's lineup and locks them. */
+function applyOfficial() {
+  for (const mode of MODES) {
+    const slots = FORMATS[mode].slots;
+    locked[mode] = slots.map(() => false);
+    const day = days.find((d) => d.format === mode);
+    const official = (day?.matches ?? []).filter((m) => m.red.length || m.blue.length);
+    const lineup = state.picks[mode];
+    for (const m of official) {
+      const label = byFlight(m.red.length ? m.red : m.blue).map((n) => byName(n)?.flight ?? '').join('');
+      let i = slots.findIndex((slot, idx) => !locked[mode][idx] && slot === label);
+      if (i < 0) i = locked[mode].indexOf(false);
+      if (i < 0) break;
+      locked[mode][i] = true;
+      const fill = (names) => Array.from({ length: size(mode) }, (_, pos) => byFlight(names)[pos] ?? '');
+      lineup[i] = { red: fill(m.red), blue: fill(m.blue) };
+    }
+    // Anyone in an official match can't also sit in an editable one.
+    const taken = new Set(lineup.flatMap((m, i) => (locked[mode][i] ? [...m.red, ...m.blue] : [])).filter(Boolean));
+    lineup.forEach((m, i) => {
+      if (locked[mode][i]) return;
+      for (const side of SIDES) m[side] = m[side].map((n) => (taken.has(n) ? '' : n));
+    });
+  }
 }
 
-/** player → Map(opponent → format they met in), across both 2v2 rounds. */
-function buildFaced() {
+// ---------- No rematches: a player meets each opponent at most once ----------
+
+const TWO_V_TWO = ['Matched', 'Mixed'];
+/** The other rounds a format's matchups must not repeat: singles checks both 2v2 rounds, each 2v2 round the other. */
+const rivalRounds = (mode) => TWO_V_TWO.filter((m) => m !== mode);
+
+/** player → Map(opponent → format they met in), from the rounds `mode` is checked against. */
+function buildFaced(mode = state.mode) {
   const faced = new Map();
-  const add = (a, b, mode) => {
+  const add = (a, b, where) => {
     if (!faced.has(a)) faced.set(a, new Map());
-    faced.get(a).set(b, mode);
+    faced.get(a).set(b, where);
   };
-  for (const mode of TWO_V_TWO) {
-    for (const m of priorMatches(mode).matches) {
-      for (const r of m.red) for (const b of m.blue) { add(r, b, mode); add(b, r, mode); }
+  for (const rival of rivalRounds(mode)) {
+    for (const m of state.picks[rival]) {
+      for (const r of m.red.filter(Boolean)) for (const b of m.blue.filter(Boolean)) { add(r, b, rival); add(b, r, rival); }
     }
   }
   return faced;
 }
 
 let faced = new Map();
-/** The 2v2 format two players already met in, or undefined if they haven't. */
+/** The format two players already met in, or undefined if they haven't. */
 const metIn = (a, b) => (a && b ? faced.get(a)?.get(b) : undefined);
+/** The first red/blue pair in a match who have already met: [red, blue, format], or null. */
+function rematchIn(m) {
+  for (const r of m.red) for (const b of m.blue) if (metIn(r, b)) return [r, b, metIn(r, b)];
+  return null;
+}
 const isSingles = () => state.mode === 'Singles';
 
 // ---------- Actions ----------
@@ -122,46 +149,37 @@ const shuffle = (arr) => {
   return a;
 };
 
-/** All orderings of a small list. */
-const permutations = (list) => (list.length <= 1 ? [list]
-  : list.flatMap((x, i) => permutations([...list.slice(0, i), ...list.slice(i + 1)]).map((rest) => [x, ...rest])));
+/**
+ * Fills the editable matches at random, keeping official ones, and retries until it finds
+ * a lineup with no rematches (or settles for the fewest if none turns up).
+ */
+function randomFill() {
+  const mode = state.mode;
+  faced = buildFaced(mode);
+  const lineup = state.picks[mode];
+  const official = new Set(lineup.flatMap((m, i) => (isLocked(i) ? [...m.red, ...m.blue] : [])).filter(Boolean));
+  const free = (side, flight) => players.filter((p) => fits(p, side, flight) && !official.has(p.name));
+  const rematches = (cand) => cand.reduce((n, m, i) => (isLocked(i) ? n
+    : n + m.red.reduce((k, r) => k + m.blue.filter((b) => metIn(r, b)).length, 0)), 0);
 
-/** Singles: pair each flight so nobody meets an opponent they've already played; unpairable slots stay blank. */
-function fillSingles() {
-  faced = buildFaced();
-  const next = emptyPicks('Singles');
-  for (const flight of ['A', 'B']) {
-    const slots = next.map((_, i) => i).filter((i) => slotFlight(i, 0, 'Singles') === flight);
-    const reds = shuffle(players.filter((p) => fits(p, 'red', flight))).slice(0, slots.length);
-    const blues = shuffle(players.filter((p) => fits(p, 'blue', flight)));
-    const score = (order) => reds.filter((r, i) => order[i] && !metIn(r.name, order[i].name)).length;
-    const best = permutations(blues).reduce((a, b) => (score(b) > score(a) ? b : a));
-    reds.forEach((r, i) => {
-      next[slots[i]].red[0] = r.name;
-      if (best[i] && !metIn(r.name, best[i].name)) next[slots[i]].blue[0] = best[i].name;
-    });
+  let best = lineup;
+  let fewest = Infinity;
+  for (let attempt = 0; attempt < 4000 && fewest > 0; attempt++) {
+    const cand = lineup.map((m, i) => (isLocked(i) ? m : { red: m.red.map(() => ''), blue: m.blue.map(() => '') }));
+    for (const side of SIDES) {
+      const pools = { A: shuffle(free(side, 'A')), B: shuffle(free(side, 'B')) };
+      cand.forEach((m, i) => {
+        if (!isLocked(i)) m[side] = m[side].map((_, pos) => pools[slotFlight(i, pos, mode)]?.shift()?.name ?? '');
+      });
+    }
+    const count = rematches(cand);
+    if (count < fewest) { best = cand; fewest = count; }
   }
-  state.picks.Singles = next;
+  state.picks[mode] = best;
 }
 
-function randomFill() {
-  if (isSingles()) { fillSingles(); return; }
-  const next = emptyPicks(state.mode);
-  for (const side of SIDES) {
-    const pools = { '': shuffle(players.filter((p) => p.side === side)) };
-    for (const f of ['A', 'B']) pools[f] = shuffle(players.filter((p) => p.side === side && p.flight === f));
-    const taken = new Set();
-    next.forEach((m, match) => {
-      m[side].forEach((_, pos) => {
-        const pool = pools[slotFlight(match, pos)];
-        let p = pool.shift();
-        while (p && taken.has(p.name)) p = pool.shift();
-        if (p) taken.add(p.name);
-        m[side][pos] = p?.name ?? '';
-      });
-    });
-  }
-  state.picks[state.mode] = next;
+function clearEditable() {
+  state.picks[state.mode] = picks().map((m, i) => (isLocked(i) ? m : { red: m.red.map(() => ''), blue: m.blue.map(() => '') }));
 }
 
 // ---------- Rendering ----------
@@ -197,14 +215,15 @@ function renderSelect(match, side, pos, used) {
     .sort((a, b) => a.hcp - b.hcp)
     .map((p) => {
       const taken = p.name !== current && used.has(p.name);
-      // Singles: can't be drawn against the opponent already chosen in this match if they've met.
-      const met = isSingles() && p.name !== current ? metIn(p.name, picks()[match][otherSide(side)][0]) : undefined;
+      // Can't be drawn against an opponent already chosen in this match if they've met in another round.
+      const met = p.name !== current
+        ? picks()[match][otherSide(side)].map((opp) => metIn(p.name, opp)).find(Boolean) : undefined;
       const note = taken ? ' · taken' : met ? ` · played in ${met}` : '';
       return `<option value="${esc(p.name)}"${p.name === current ? ' selected' : ''}${taken || met ? ' disabled' : ''}>${esc(p.name)} (${formatPlaying(playing(p))})${note}</option>`;
     }).join('');
   return `
     <label class="visually-hidden" for="s-${match}-${side}-${pos}">Team ${esc(settings.teams[side])} match ${match + 1} player ${pos + 1}${flight ? ` (Flight ${flight})` : ''}</label>
-    <select class="select" id="s-${match}-${side}-${pos}" data-match="${match}" data-side="${side}" data-pos="${pos}">
+    <select class="select" id="s-${match}-${side}-${pos}" data-match="${match}" data-side="${side}" data-pos="${pos}"${isLocked(match) ? ' disabled' : ''}>
       <option value="">${flight ? `Flight ${flight} player…` : 'Select player…'}</option>${options}
     </select>`;
 }
@@ -217,9 +236,9 @@ function renderMatch(match, used) {
   const diff = complete ? strokes(hcp.red, hcp.blue) : 0;
   const receiver = complete && diff ? (hcp.red > hcp.blue ? 'red' : 'blue') : null;
   const who = receiver && (singles ? esc(m[receiver][0]) : `Team ${esc(settings.teams[receiver])}`);
-  const rematch = singles ? metIn(m.red[0], m.blue[0]) : undefined;
+  const rematch = rematchIn(m);
   const verdict = rematch
-    ? `<div class="mcard__foot bad">Rematch: they already played in ${FORMATS[rematch].title}. Pick a different opponent.</div>`
+    ? `<div class="mcard__foot bad">Rematch: ${esc(rematch[0])} and ${esc(rematch[1])} already played in ${FORMATS[rematch[2]].title}.</div>`
     : !complete
     ? `<div class="mcard__foot tba">Select ${singles ? 'both' : 'all four'} players</div>`
     : receiver
@@ -231,7 +250,10 @@ function renderMatch(match, used) {
     <section class="card">
       <header class="mcard__head">
         <h2>Match ${match + 1}</h2>
-        ${label ? `<span class="flight">${label}</span>` : ''}
+        <span class="mcard__tags">
+          ${isLocked(match) ? '<span class="official eyebrow">Official</span>' : ''}
+          ${label ? `<span class="flight">${label}</span>` : ''}
+        </span>
       </header>
       <div class="mcard__body">
         ${SIDES.map((side) => `
@@ -256,23 +278,24 @@ function render() {
   for (const m of picks()) {
     const r = sideHcp(m.red);
     const b = sideHcp(m.blue);
-    if (isSingles() && metIn(m.red[0], m.blue[0])) continue;
+    if (rematchIn(m)) continue;
     if (r != null && b != null) { totals.red += r; totals.blue += b; complete++; }
   }
   const pct = (n) => `${Math.round(n * 100)}%`;
+  const allLocked = locked[state.mode].every(Boolean);
 
   app.innerHTML = `
     <details class="help"${helpOpen ? ' open' : ''}>
       <summary class="eyebrow">How it works</summary>
-      <p>Build a lineup for any round to see handicaps and strokes. In 2v2, team handicap is ${pct(settings.lowerPct)} of the lower handicap plus ${pct(settings.higherPct)} of the higher; in singles, strokes are the difference between the two players' handicaps. Singles are flight-matched (A v A, B v B) and nobody plays the same opponent twice, so anyone a player met in a 2v2 round is unavailable.${courseMode() ? ' Handicaps are course handicaps (Index × Slope ÷ 113 + Rating − Par) for the course where this format is played.' : ''} This is a preview only; official matchups are posted on the Schedule.</p>
+      <p>Build a lineup for any round to see handicaps and strokes. In 2v2, team handicap is ${pct(settings.lowerPct)} of the lower handicap plus ${pct(settings.higherPct)} of the higher; in singles, strokes are the difference between the two players' handicaps. Singles are flight-matched (A v A, B v B). Nobody plays the same opponent twice across the three rounds, so opponents a player has already met are unavailable. Matchups marked Official come from the posted tee sheet and can't be changed here.${courseMode() ? ' Handicaps are course handicaps (Index × Slope ÷ 113 + Rating − Par) for the course where this format is played.' : ''} This is a preview only; official matchups are posted on the Schedule.</p>
     </details>
     <div class="toolbar">
       <div class="segmented" role="group" aria-label="Format">
         ${scheduledModes().map((m) => `<button class="eyebrow" data-mode="${m}" aria-pressed="${m === state.mode}">${FORMATS[m].title}</button>`).join('')}
       </div>
       <div class="btn-row">
-        <button class="btn" data-action="random">${isSingles() ? 'Auto Fill' : 'Random Fill'}</button>
-        <button class="btn" data-action="clear">Clear</button>
+        <button class="btn" data-action="random"${allLocked ? ' disabled' : ''}>${isSingles() ? 'Auto Fill' : 'Random Fill'}</button>
+        <button class="btn" data-action="clear"${allLocked ? ' disabled' : ''}>Clear</button>
         <button class="btn btn--solid" data-action="share">Copy Link</button>
       </div>
     </div>
@@ -294,7 +317,7 @@ app.addEventListener('toggle', (e) => {
 
 app.addEventListener('change', (e) => {
   const s = e.target.closest('select[data-match]');
-  if (!s) return;
+  if (!s || isLocked(+s.dataset.match)) return;
   picks()[+s.dataset.match][s.dataset.side][+s.dataset.pos] = s.value;
   writeHash();
   render();
@@ -306,7 +329,7 @@ app.addEventListener('click', async (e) => {
   if (!btn) return;
   if (btn.dataset.mode) state.mode = btn.dataset.mode;
   else if (btn.dataset.action === 'random') randomFill();
-  else if (btn.dataset.action === 'clear') state.picks[state.mode] = emptyPicks(state.mode);
+  else if (btn.dataset.action === 'clear') clearEditable();
   else if (btn.dataset.action === 'share') {
     try {
       await navigator.clipboard.writeText(location.href);
@@ -325,6 +348,7 @@ app.addEventListener('click', async (e) => {
 window.addEventListener('hashchange', () => {
   state.picks = allEmpty();
   readHash();
+  applyOfficial();
   render();
 });
 
@@ -335,6 +359,7 @@ try {
   playerMap = new Map(players.map((p) => [p.name, p]));
   applyEdition(settings.edition);
   readHash();
+  applyOfficial();
   writeHash();
   render();
 } catch (err) {
