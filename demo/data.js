@@ -25,18 +25,20 @@ const MATCHES = [
   [1, '8:10 AM', 'Taylor', 'Braden', 'Cody', 'Cole', 'Garrett', '1 UP'],
   [1, '8:20 AM', 'Nate', 'Rikky', 'Jbone', 'Landon', 'Halved', ''],
   [1, '8:30 AM', 'Garrett', 'Jeff', 'Brad', 'Drew', 'Garrett', '2&1'],
-  [2, '9:00 AM', 'Brandon', 'Nate', 'JD', 'Jbone', 'Halved', ''],
-  [2, '9:10 AM', 'JK', 'Rikky', 'Eric', 'Landon', 'Eric', '3&2'],
-  [2, '9:20 AM', 'Taylor', 'Garrett', 'Cody', 'Brad', 'Garrett', '2 UP'],
-  [2, '9:30 AM', 'Braden', 'Jeff', 'Cole', 'Drew', 'Eric', '5&4'],
-  [3, '10:00 AM', 'Brandon', '', 'JD', '', 'Eric', '3&2'],
-  [3, '10:00 AM', 'JK', '', 'Eric', '', 'Garrett', '1 UP'],
-  [3, '10:10 AM', 'Taylor', '', 'Cody', '', 'Eric', '2&1'],
-  [3, '10:10 AM', 'Braden', '', 'Cole', '', 'Eric', '2&1'],
+  // Day 2 pairs nobody with a day-1 opponent, which leaves exactly one legal singles draw.
+  [2, '9:00 AM', 'Brandon', 'Nate', 'Cody', 'Brad', 'Halved', ''],
+  [2, '9:10 AM', 'JK', 'Rikky', 'Cole', 'Drew', 'Eric', '3&2'],
+  [2, '9:20 AM', 'Taylor', 'Garrett', 'JD', 'Jbone', 'Garrett', '2 UP'],
+  [2, '9:30 AM', 'Braden', 'Jeff', 'Eric', 'Landon', 'Eric', '5&4'],
+  // Singles: flight-matched (A v A, then B v B), no rematches.
+  [3, '10:00 AM', 'Brandon', '', 'Cole', '', 'Eric', '3&2'],
+  [3, '10:00 AM', 'JK', '', 'Cody', '', 'Garrett', '1 UP'],
+  [3, '10:10 AM', 'Taylor', '', 'Eric', '', 'Eric', '2&1'],
+  [3, '10:10 AM', 'Braden', '', 'JD', '', 'Eric', '2&1'],
   [3, '10:20 AM', 'Nate', '', 'Drew', '', 'Garrett', '6&5'],
-  [3, '10:20 AM', 'Rikky', '', 'Jbone', '', 'Eric', '1 UP'],
-  [3, '10:30 AM', 'Garrett', '', 'Brad', '', 'Halved', ''],
-  [3, '10:30 AM', 'Jeff', '', 'Landon', '', 'Eric', '2 UP'],
+  [3, '10:20 AM', 'Rikky', '', 'Brad', '', 'Eric', '1 UP'],
+  [3, '10:30 AM', 'Garrett', '', 'Landon', '', 'Halved', ''],
+  [3, '10:30 AM', 'Jeff', '', 'Jbone', '', 'Eric', '2 UP'],
 ];
 
 // [round, hole, prize, winner]; winners only show for rounds that have been played.

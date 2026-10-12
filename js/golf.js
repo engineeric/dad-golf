@@ -9,7 +9,8 @@ export const DAYS = 3;
 export const FORMATS = {
   Matched: { title: 'Matched Flights', sub: '2v2 · AA & BB', slots: ['AA', 'AA', 'BB', 'BB'] },
   Mixed: { title: 'Mixed Flights', sub: '2v2 · AB', slots: ['AB', 'AB', 'AB', 'AB'] },
-  Singles: { title: 'Singles', sub: '1v1', slots: Array(8).fill('') },
+  // Singles are flight-matched: four A v A matches, then four B v B.
+  Singles: { title: 'Singles', sub: '1v1 · A v A & B v B', slots: ['A', 'A', 'A', 'A', 'B', 'B', 'B', 'B'] },
 };
 
 // Rounds to 3 places first so float noise (4.1499999…) doesn't flip a half-up rounding.
