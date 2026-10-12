@@ -248,18 +248,6 @@ function renderMatch(match, used) {
     </section>`;
 }
 
-/** Singles only: the no-rematch rule and where the "already played" list comes from. */
-function renderRematchNote() {
-  if (!isSingles()) return '';
-  const sources = TWO_V_TWO.map((mode) => {
-    const prior = priorMatches(mode);
-    const set = prior.matches.filter((m) => m.red.length && m.blue.length).length;
-    const from = prior.official ? 'official matchups' : set ? `your preview lineup (${set} of ${matchCount(mode)} set)` : 'not set yet';
-    return `${FORMATS[mode].title}: ${from}`;
-  });
-  return `<p class="basis eyebrow">No rematches · opponents from the 2v2 rounds are excluded · ${sources.join(' · ')}</p>`;
-}
-
 function render() {
   faced = buildFaced();
   const used = new Set(picks().flatMap((m) => [...m.red, ...m.blue]).filter(Boolean));
@@ -289,7 +277,6 @@ function render() {
       </div>
     </div>
     ${renderBasis()}
-    ${renderRematchNote()}
     <section class="card summary" aria-label="Lineup totals">
       <div class="g bg-red"><span class="eyebrow">${esc(settings.teams.red)} total</span><strong>${complete ? formatPlaying(round1(totals.red)) : '—'}</strong></div>
       <div class="mid"><span class="eyebrow">${FORMATS[state.mode].sub}</span><br><span class="num">${complete} of ${matchCount(state.mode)}</span> matches set</div>
