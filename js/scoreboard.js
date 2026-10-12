@@ -1,7 +1,7 @@
 import { loadData } from './sheet.js';
 import {
   SIDES, TOTAL_POINTS, TO_WIN, awards, buildDays, currentDay, datedDays, dayTitle, daysUntil, formatDate, formatPts,
-  formatTime, isDayComplete, loserResult, formatPlaying, playerStandings, points, sideHandicap, strokes, usesCourseHandicap,
+  formatTime, isDayComplete, loserResult, formatPlaying, playerStandings, points, sideHandicap, strokes,
 } from './golf.js';
 import { ICONS, applyEdition, esc, holeBadge, playerChip, renderChrome, showError, withDemo } from './ui.js';
 
@@ -115,7 +115,7 @@ function renderDay(day, players, settings, collapsible) {
   const head = `
       <header class="round__head">
         <div>
-          <span class="eyebrow">Day ${day.round}${day.date ? ` · ${esc(formatDate(day.date, { weekday: 'short', month: 'short', day: 'numeric' }))}` : ''}${day.formatInfo ? ` · ${esc(day.formatInfo.sub)}` : ''}${handicapNote(day, settings)}</span>
+          <span class="eyebrow">Day ${day.round}${day.date ? ` · ${esc(formatDate(day.date, { weekday: 'short', month: 'short', day: 'numeric' }))}` : ''}${day.formatInfo ? ` · ${esc(day.formatInfo.sub)}` : ''}</span>
           <h2>${esc(dayTitle(day))}</h2>
           <div class="round__course">${course} · <a href="${withDemo(`schedule.html#day-${day.round}`)}">Schedule →</a></div>
         </div>
@@ -153,12 +153,6 @@ function renderPrizes(day, players) {
       </div>`;
   }).join('');
   return `<div class="prizes"><span class="eyebrow prizes__label">Hole prizes</span><div class="prizes__grid">${tiles}</div></div>`;
-}
-
-/** Which handicap the day's HCP figures use, only worth saying when course handicaps are on. */
-function handicapNote(day, settings) {
-  if (settings.handicapMode !== 'course') return '';
-  return usesCourseHandicap(settings, day) ? ' · Course handicaps' : ' · Index (course not rated)';
 }
 
 const signed = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0');

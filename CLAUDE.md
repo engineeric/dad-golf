@@ -98,7 +98,7 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 - **Course handicap mode** (Settings `Handicap = Course`):
   - Formula: `round(Index × Slope / 113 + (Rating − Par))`, using that day's Schedule row.
   - It's used by Scoreboard strokes, awards and the Matchups preview.
-  - A day missing slope, rating or par falls back to index, and the page says so.
+  - A day missing slope, rating or par falls back to index. Only the Matchups page says which is in use; Scoreboard day headers deliberately don't mention handicaps.
   - The Teams page always shows index.
 
 **Margins and standings**
