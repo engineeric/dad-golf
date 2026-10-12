@@ -8,6 +8,11 @@ renderChrome('matchups');
 const app = document.getElementById('app');
 
 const MODES = ['Matched', 'Mixed', 'Singles'];
+/** Formats in the order they're played per the Schedule tab; unscheduled ones keep their default order, last. */
+function scheduledModes() {
+  const day = (m) => days.find((d) => d.format === m)?.round ?? Infinity;
+  return [...MODES].sort((a, b) => day(a) - day(b) || MODES.indexOf(a) - MODES.indexOf(b));
+}
 const size = (mode) => (mode === 'Singles' ? 1 : 2); // players per side
 const matchCount = (mode) => FORMATS[mode].slots.length;
 const emptyPicks = (mode) => Array.from({ length: matchCount(mode) }, () => ({
@@ -40,8 +45,8 @@ function writeHash() {
 
 function readHash() {
   const params = new URLSearchParams(location.hash.slice(1));
-  const mode = MODES.find((m) => m.toLowerCase() === params.get('f'));
-  if (mode) state.mode = mode;
+  // No format in the link: open on the first one played.
+  state.mode = MODES.find((m) => m.toLowerCase() === params.get('f')) ?? scheduledModes()[0];
   const flat = (params.get('p') ?? '').split('~');
   const per = size(state.mode) * 2;
   if (flat.length !== matchCount(state.mode) * per) return;
@@ -184,7 +189,7 @@ function render() {
     </details>
     <div class="toolbar">
       <div class="segmented" role="group" aria-label="Format">
-        ${MODES.map((m) => `<button class="eyebrow" data-mode="${m}" aria-pressed="${m === state.mode}">${FORMATS[m].title}</button>`).join('')}
+        ${scheduledModes().map((m) => `<button class="eyebrow" data-mode="${m}" aria-pressed="${m === state.mode}">${FORMATS[m].title}</button>`).join('')}
       </div>
       <div class="btn-row">
         <button class="btn" data-action="random">Random Fill</button>

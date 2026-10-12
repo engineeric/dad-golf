@@ -89,7 +89,7 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
   - **Matched:** 2v2 with AA and BB pairs, 4 matches.
   - **Mixed:** 2v2 with AB pairs, 4 matches.
   - **Singles:** 1v1, 8 matches, any player against any player.
-- **Day for each format:** set by the Schedule `Format` column, not fixed in code. Matchups finds the course for a format by matching the day's Format.
+- **Day for each format:** set by the Schedule `Format` column, not fixed in code. Matchups finds the course for a format by matching the day's Format. The Matchups format buttons are ordered by that schedule and open on the first format played.
 
 **Handicaps**
 - **2v2 team handicap:** `lowerPct × lower + higherPct × higher` (35% / 15%, from Settings).
