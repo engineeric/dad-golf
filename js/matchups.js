@@ -231,13 +231,12 @@ const previewDay = (mode) => (courseMode() && courseData(formatDay(mode)) ? form
 const playing = (p, mode) => playingHandicap(p, settings, previewDay(mode));
 const sideHcp = (names, mode) => (names.every(Boolean) ? sideHandicap(names, playerMap, settings, previewDay(mode)) : null);
 
-/** The course a format is played on, and which handicaps its column is using when Settings asks for course handicaps. */
+/** The course and tees a format is played on; says so when a column falls back to handicap index. */
 function basisText(mode) {
   const day = formatDay(mode);
-  const course = day?.course ? `${esc(day.course)}${day.tees ? ` (${esc(day.tees)} tees)` : ''}` : '';
-  if (!courseMode()) return course || FORMATS[mode].sub;
-  if (previewDay(mode)) return `${course} · course handicaps`;
-  return `Handicap index · ${day ? 'course not rated yet' : 'not scheduled'}`;
+  const course = day?.course ? `${esc(day.course)}${day.tees ? `<br>${esc(day.tees)} tees` : ''}` : '';
+  if (courseMode() && !previewDay(mode)) return `Handicap index · ${day ? 'course not rated yet' : 'not scheduled'}`;
+  return course || FORMATS[mode].sub;
 }
 
 // ---------- Rendering ----------
