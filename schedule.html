@@ -68,7 +68,8 @@
     .map .tba { position: absolute; inset: 0; display: grid; place-items: center; }
 
     .prize-holes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 22px; border-top: 1px solid var(--rule); background: rgba(204, 166, 92, 0.07); }
-    .prize-holes > .eyebrow { color: var(--gold); font-size: 10px; margin-right: 4px; }
+    /* Title on its own row, as on the Scoreboard, so the first row of prizes isn't squeezed. */
+    .prize-holes > .eyebrow { flex-basis: 100%; color: var(--gold); font-size: 10px; margin-bottom: 2px; }
     .prize-hole { display: inline-flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--rule); border-radius: 4px; padding: 4px 6px 4px 5px; font-size: 14px; }
     .prize-hole > span:not(.hole-no):not(.chip) { padding-right: 4px; }
     .teesheet { border-top: 2px solid var(--rule-strong); }
@@ -128,7 +129,9 @@
       .day__head, .course { padding: 16px; }
       .tee { grid-template-columns: 1fr; gap: 8px; padding: 12px 16px; }
       .teesheet__head { padding: 12px 16px; }
-      .prize-holes { padding: 12px 16px; }
+      .prize-holes { display: grid; grid-template-columns: 1fr 1fr; padding: 12px 16px; }
+      .prize-holes > .eyebrow { grid-column: 1 / -1; }
+      .prize-hole { font-size: 13px; line-height: 1.2; }
       .tee__match { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 4px; }
       .tee__side { gap: 4px; }
       .tee__side .chip { padding: 7px 3px 8px; font-size: 12.5px; }
