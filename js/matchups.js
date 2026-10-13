@@ -251,7 +251,8 @@ function renderMatch(match, used) {
       <header class="mcard__head">
         <h2>Match ${match + 1}</h2>
         <span class="mcard__tags">
-          ${isLocked(match) ? '<span class="official eyebrow">Official</span>' : ''}
+          ${isLocked(match) ? '<span class="official eyebrow">Official</span>'
+    : `<button class="mcard__clear eyebrow" data-action="clear-match" data-match="${match}"${[...m.red, ...m.blue].some(Boolean) ? '' : ' disabled'} aria-label="Clear match ${match + 1}">Clear</button>`}
           ${label ? `<span class="flight">${label}</span>` : ''}
         </span>
       </header>
@@ -330,6 +331,11 @@ app.addEventListener('click', async (e) => {
   if (btn.dataset.mode) state.mode = btn.dataset.mode;
   else if (btn.dataset.action === 'random') randomFill();
   else if (btn.dataset.action === 'clear') clearEditable();
+  else if (btn.dataset.action === 'clear-match') {
+    const i = +btn.dataset.match;
+    if (isLocked(i)) return;
+    picks()[i] = { red: picks()[i].red.map(() => ''), blue: picks()[i].blue.map(() => '') };
+  }
   else if (btn.dataset.action === 'share') {
     try {
       await navigator.clipboard.writeText(location.href);
