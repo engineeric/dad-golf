@@ -17,7 +17,8 @@ try { me = localStorage.getItem(ME_KEY) ?? ''; } catch { /* storage unavailable 
 
 // ---------- Links ----------
 
-const placeQuery = (day) => day.address || day.course;
+// Course name first, so the maps resolve to the course itself rather than a bare street address.
+const placeQuery = (day) => [day.course, day.address].filter(Boolean).join(', ').replace(/\s*\n\s*/g, ', ');
 const googleDirections = (q) => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}`;
 const appleDirections = (q) => `https://maps.apple.com/?daddr=${encodeURIComponent(q)}`;
 const mapEmbed = (q) => `https://www.google.com/maps?q=${encodeURIComponent(q)}&t=h&output=embed`;
