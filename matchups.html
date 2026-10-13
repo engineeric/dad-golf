@@ -17,6 +17,8 @@
       gap: 12px;
       margin-bottom: 18px;
     }
+    .basis { margin: -4px 0 14px; color: var(--muted); font-size: 10px; }
+    .toolbar__views { display: flex; flex-wrap: wrap; gap: 10px; }
     .help { margin: 0 0 14px; }
     .help summary {
       display: inline-flex;
@@ -45,6 +47,54 @@
     .help summary:hover, .help[open] summary { color: var(--ink); }
     .help p { margin: 8px 0 0; color: var(--muted); max-width: 70ch; font-size: 15px; }
 
+    /* One round at a time, with drop-downs (the default view). */
+    .summary {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      margin-bottom: 22px;
+    }
+    .summary > div { padding: 14px 20px; }
+    .summary .g { color: var(--white); }
+    .summary .e { color: var(--white); text-align: right; }
+    .summary strong { display: block; font-size: 26px; font-variant-numeric: tabular-nums; }
+    .summary .mid { text-align: center; color: var(--muted); font-size: 13px; }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+
+    .mcard__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 18px;
+      border-bottom: 2px solid var(--rule-strong);
+    }
+    .mcard__head h2 { margin: 0; font-family: var(--serif); font-size: 20px; }
+    .mcard__body { display: grid; grid-template-columns: 1fr 1fr; }
+    .pair { padding: 14px 18px 16px; display: grid; gap: 8px; align-content: start; position: relative; }
+    .pair + .pair { border-left: 1px solid var(--rule); }
+    .pair--red { box-shadow: inset 0 3px var(--red); }
+    .pair--blue { box-shadow: inset 0 3px var(--blue); }
+    .pair__label { font-size: 10px; }
+    .pair__hcp { display: flex; align-items: baseline; justify-content: space-between; margin-top: 4px; }
+    .pair__hcp strong { font-size: 28px; font-variant-numeric: tabular-nums; }
+    .pair__hcp .eyebrow { font-size: 9px; color: var(--muted); }
+    .mcard__foot {
+      padding: 12px 18px;
+      background: var(--cream);
+      border-top: 1px solid var(--rule);
+      font-size: 14px;
+      font-weight: 600;
+      text-align: center;
+    }
+    .mcard__foot.tba { font-weight: 400; }
+    .mcard__foot.bad { color: var(--fg-red); }
+    .mcard__tags { display: flex; align-items: center; gap: 8px; }
+    .select:disabled { opacity: 1; color: var(--ink); background-image: none; background-color: var(--cream); cursor: default; }
+
+
+    /* All three rounds side by side, with player cards (optional, wide screens only). */
     .board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: start; }
 
     .col__head {
@@ -94,6 +144,7 @@
     .match__row { display: grid; grid-template-columns: minmax(0, 1fr) 54px minmax(0, 1fr); gap: 6px; align-items: center; }
     .match__side { display: grid; gap: 6px; }
     .match__mid { text-align: center; color: var(--muted); font-size: 10px; }
+    .match__mid .gets { padding: 3px 6px; letter-spacing: 0; white-space: nowrap; }
     .match__bad { margin: 8px 0 0; color: var(--fg-red); font-size: 13px; font-weight: 600; }
     .official { color: var(--gold); font-size: 9px; }
     .flight { color: var(--ink); }
@@ -102,11 +153,9 @@
       background: var(--gold);
       color: var(--navy);
       border-radius: 3px;
-      padding: 3px 6px;
+      padding: 2px 7px;
       font-weight: 800;
       font-size: 12px;
-      letter-spacing: 0;
-      white-space: nowrap;
     }
 
     /* Player cards: a slot in a match, or a candidate in the tray. */
@@ -146,18 +195,18 @@
 
     .btn:disabled { opacity: 0.4; cursor: default; }
 
-    /* Wide screens show all three rounds; narrower ones show the round picked in the toggle. */
-    @media (min-width: 1100px) { .segmented { display: none; } }
-    @media (max-width: 1099px) {
-      .board { grid-template-columns: minmax(0, 1fr); }
-      .col:not(.is-active) { display: none; }
-    }
+    /* The all-rounds view needs the width, so its toggle only shows on wide screens. */
+    @media (max-width: 1099px) { .segmented.view { display: none; } }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
     @media (max-width: 720px) {
+      .toolbar__views { width: 100%; }
       .segmented { display: flex; width: 100%; }
       .segmented button { flex: 1; padding: 0 6px; font-size: 10px; letter-spacing: 0.08em; }
-      .toolbar .btn-row { width: 100%; flex-wrap: nowrap; }
-      .toolbar .btn { flex: 1; padding: 0 8px; letter-spacing: 0.1em; }
-      .col__head, .col__totals, .match { padding-inline: 12px; }
+      .mcard__body { grid-template-columns: 1fr; }
+      .pair { padding: 12px 16px 14px; }
+      .pair + .pair { border-left: 0; border-top: 1px solid var(--rule); }
+      .summary strong { font-size: 22px; }
+      .summary > div { padding: 12px; }
     }
   </style>
 </head>

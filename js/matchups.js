@@ -25,9 +25,11 @@ let players = [];
 let playerMap = new Map();
 let settings;
 let days = [];
-// `mode` is the format shown on narrow screens; wide screens show all three side by side.
-const state = { mode: 'Matched', picks: allEmpty() };
-let sel = null; // the slot whose player tray is open: { mode, match, side, pos }
+// `mode` is the format on show; `board` asks for the optional view of all three rounds side by side.
+const state = { mode: 'Matched', board: false, picks: allEmpty() };
+const wide = matchMedia('(min-width: 1100px)'); // the board needs the width, so it's desktop only
+const boardOn = () => state.board && wide.matches;
+let sel = null; // board view: the slot whose player tray is open: { mode, match, side, pos }
 let helpOpen = false; // survives re-renders
 
 const byName = (n) => playerMap.get(n);
@@ -37,11 +39,12 @@ const slotFlight = (match, pos, mode) => FORMATS[mode].slots[match][pos] ?? '';
 const otherSide = (side) => (side === 'red' ? 'blue' : 'red');
 const fits = (p, side, flight) => p.side === side && (!flight || p.flight === flight);
 
-// ---------- URL hash: #f=singles&matched=R1a~R1b~B1a~B1b~…&mixed=…&singles=… ----------
+// ---------- URL hash: #f=singles&v=all&matched=R1a~R1b~B1a~B1b~…&mixed=…&singles=… ----------
 // Every format's lineup is in the link, because the singles options depend on the 2v2 lineups.
 
 function writeHash() {
   const params = new URLSearchParams({ f: state.mode.toLowerCase() });
+  if (state.board) params.set('v', 'all');
   for (const mode of MODES) {
     const flat = state.picks[mode].flatMap((m) => [...m.red, ...m.blue]);
     if (flat.some(Boolean)) params.set(mode.toLowerCase(), flat.join('~'));
@@ -69,6 +72,7 @@ function readHash() {
   const params = new URLSearchParams(location.hash.slice(1));
   // No format in the link: open on the first one played.
   state.mode = MODES.find((m) => m.toLowerCase() === params.get('f')) ?? scheduledModes()[0];
+  state.board = params.get('v') === 'all';
   for (const mode of MODES) {
     // `p` is the old single-lineup link format.
     decodeLineup(mode, params.get(mode.toLowerCase()) ?? (mode === state.mode ? params.get('p') : null));
@@ -231,6 +235,105 @@ const previewDay = (mode) => (courseMode() && courseData(formatDay(mode)) ? form
 const playing = (p, mode) => playingHandicap(p, settings, previewDay(mode));
 const sideHcp = (names, mode) => (names.every(Boolean) ? sideHandicap(names, playerMap, settings, previewDay(mode)) : null);
 
+// ---------- One-round view (the default): a card per match, with drop-downs ----------
+
+/** Says which handicaps the preview is using; nothing to say when Settings uses index. */
+function renderBasis() {
+  if (!courseMode()) return '';
+  const day = previewDay(state.mode);
+  const scheduled = formatDay(state.mode);
+  const text = day
+    ? `Course handicaps · Day ${day.round} · ${esc(day.course)}${day.tees ? ` (${esc(day.tees)} tees)` : ''}`
+    : `Handicap index · ${scheduled ? `Day ${scheduled.round} course not rated yet` : 'no day scheduled for this format'}`;
+  return `<p class="basis eyebrow">${text}</p>`;
+}
+
+function renderSelect(match, side, pos, used) {
+  const mode = state.mode;
+  const flight = slotFlight(match, pos, mode);
+  const current = picks(mode)[match][side][pos];
+  const options = players
+    .filter((p) => fits(p, side, flight))
+    .sort((a, b) => a.hcp - b.hcp)
+    .map((p) => {
+      const taken = p.name !== current && used.has(p.name);
+      // Can't be drawn against an opponent already chosen in this match if they've met in another round.
+      const met = p.name !== current
+        ? picks(mode)[match][otherSide(side)].map((opp) => metIn(p.name, opp, mode)).find(Boolean) : undefined;
+      const note = taken ? ' · taken' : met ? ` · played in ${met}` : '';
+      return `<option value="${esc(p.name)}"${p.name === current ? ' selected' : ''}${taken || met ? ' disabled' : ''}>${esc(p.name)} (${formatPlaying(playing(p, mode))})${note}</option>`;
+    }).join('');
+  return `
+    <label class="visually-hidden" for="s-${match}-${side}-${pos}">Team ${esc(settings.teams[side])} match ${match + 1} player ${pos + 1}${flight ? ` (Flight ${flight})` : ''}</label>
+    <select class="select" id="s-${match}-${side}-${pos}" data-match="${match}" data-side="${side}" data-pos="${pos}"${isLocked(match, mode) ? ' disabled' : ''}>
+      <option value="">${flight ? `Flight ${flight} player…` : 'Select player…'}</option>${options}
+    </select>`;
+}
+
+function renderMatch(match, used) {
+  const mode = state.mode;
+  const m = picks(mode)[match];
+  const singles = size(mode) === 1;
+  const hcp = { red: sideHcp(m.red, mode), blue: sideHcp(m.blue, mode) };
+  const complete = hcp.red != null && hcp.blue != null;
+  const diff = complete ? strokes(hcp.red, hcp.blue) : 0;
+  const receiver = complete && diff ? (hcp.red > hcp.blue ? 'red' : 'blue') : null;
+  const who = receiver && (singles ? esc(m[receiver][0]) : `Team ${esc(settings.teams[receiver])}`);
+  const rematch = rematchIn(m, mode);
+  const verdict = rematch
+    ? `<div class="mcard__foot bad">Rematch: ${esc(rematch[0])} and ${esc(rematch[1])} already played in ${FORMATS[rematch[2]].title}.</div>`
+    : !complete
+    ? `<div class="mcard__foot tba">Select ${singles ? 'both' : 'all four'} players</div>`
+    : receiver
+      ? `<div class="mcard__foot">${who} gets <span class="num">${diff}</span> stroke${diff === 1 ? '' : 's'}</div>`
+      : '<div class="mcard__foot">Even match · no strokes</div>';
+  const label = FORMATS[mode].slots[match];
+
+  return `
+    <section class="card">
+      <header class="mcard__head">
+        <h2>Match ${match + 1}</h2>
+        <span class="mcard__tags">
+          ${isLocked(match, mode) ? '<span class="official eyebrow">Official</span>' : ''}
+          ${label ? `<span class="flight">${label}</span>` : ''}
+        </span>
+      </header>
+      <div class="mcard__body">
+        ${SIDES.map((side) => `
+          <div class="pair pair--${side}">
+            <span class="pair__label eyebrow fg-${side}">Team ${esc(settings.teams[side])}</span>
+            ${m[side].map((_, pos) => renderSelect(match, side, pos, used)).join('')}
+            <div class="pair__hcp">
+              <span><span class="eyebrow">${singles ? 'HCP' : 'Team HCP'}</span><br><strong>${formatPlaying(hcp[side])}</strong></span>
+              ${receiver === side ? `<span class="gets">+${diff}</span>` : ''}
+            </div>
+          </div>`).join('')}
+      </div>
+      ${verdict}
+    </section>`;
+}
+
+function renderRound() {
+  const mode = state.mode;
+  const used = new Set(picks(mode).flatMap((m) => [...m.red, ...m.blue]).filter(Boolean));
+  const totals = { red: 0, blue: 0 };
+  let complete = 0;
+  for (const m of picks(mode)) {
+    const r = sideHcp(m.red, mode);
+    const b = sideHcp(m.blue, mode);
+    if (rematchIn(m, mode)) continue;
+    if (r != null && b != null) { totals.red += r; totals.blue += b; complete++; }
+  }
+  return `
+    ${renderBasis()}
+    <section class="card summary" aria-label="Lineup totals">
+      <div class="g bg-red"><span class="eyebrow">${esc(settings.teams.red)} total</span><strong>${complete ? formatPlaying(round1(totals.red)) : '—'}</strong></div>
+      <div class="mid"><span class="eyebrow">${FORMATS[mode].sub}</span><br><span class="num">${complete} of ${matchCount(mode)}</span> matches set</div>
+      <div class="e bg-blue"><span class="eyebrow">${esc(settings.teams.blue)} total</span><strong>${complete ? formatPlaying(round1(totals.blue)) : '—'}</strong></div>
+    </section>
+    <div class="grid">${picks(mode).map((_, i) => renderMatch(i, used)).join('')}</div>`;
+}
+
 /** The course and tees a format is played on; says so when a column falls back to handicap index. */
 function basisText(mode) {
   const day = formatDay(mode);
@@ -239,7 +342,7 @@ function basisText(mode) {
   return course || FORMATS[mode].sub;
 }
 
-// ---------- Rendering ----------
+// ---------- All-rounds view: three columns of player cards ----------
 
 const slotId = ({ mode, match, side, pos }) => `s-${mode}-${match}-${side}-${pos}`;
 const sameSlot = (a, b) => !!a && !!b && slotId(a) === slotId(b);
@@ -300,7 +403,7 @@ function renderTray() {
     </div>`;
 }
 
-function renderMatch(mode, match) {
+function renderBoardMatch(mode, match) {
   const m = picks(mode)[match];
   const singles = size(mode) === 1;
   const hcp = { red: sideHcp(m.red, mode), blue: sideHcp(m.blue, mode) };
@@ -349,7 +452,7 @@ function renderColumn(mode) {
     <div><span class="eyebrow fg-${side}">${esc(settings.teams[side])} total</span><strong>${complete ? formatPlaying(round1(totals[side])) : '—'}</strong></div>`;
 
   return `
-    <section class="card col${mode === state.mode ? ' is-active' : ''}" aria-label="${FORMATS[mode].title}">
+    <section class="card col" aria-label="${FORMATS[mode].title}">
       <header class="col__head">
         <div>
           <h2 class="eyebrow">${day ? `Day ${day.round} · ` : ''}${FORMATS[mode].title}</h2>
@@ -366,31 +469,45 @@ function renderColumn(mode) {
         <div class="mid"><span class="eyebrow">${FORMATS[mode].sub}</span><br><span class="num">${complete} of ${matchCount(mode)}</span> set</div>
         ${total('blue')}
       </div>
-      ${picks(mode).map((_, i) => renderMatch(mode, i)).join('')}
+      ${picks(mode).map((_, i) => renderBoardMatch(mode, i)).join('')}
     </section>`;
 }
 
+// ---------- Page ----------
+
 function render() {
   faced = Object.fromEntries(MODES.map((m) => [m, buildFaced(m)]));
+  const board = boardOn();
   const pct = (n) => `${Math.round(n * 100)}%`;
-  const allLocked = MODES.every((m) => locked[m].every(Boolean));
+  const noneEditable = (board ? MODES : [state.mode]).every((m) => locked[m].every(Boolean));
+  const off = noneEditable ? ' disabled' : '';
 
   app.innerHTML = `
     <details class="help"${helpOpen ? ' open' : ''}>
       <summary class="eyebrow">How it works</summary>
-      <p>Build a lineup for each round to see handicaps and strokes: choose a slot, then a player. In 2v2, team handicap is ${pct(settings.lowerPct)} of the lower handicap plus ${pct(settings.higherPct)} of the higher; in singles, strokes are the difference between the two players' handicaps. Singles are flight-matched (A v A, B v B). Nobody plays the same opponent twice across the three rounds, so opponents a player has already met are unavailable. Matchups marked Official come from the posted tee sheet and can't be changed here.${courseMode() ? ' Handicaps are course handicaps (Index × Slope ÷ 113 + Rating − Par) for the course where each format is played.' : ''} This is a preview only; official matchups are posted on the Schedule.</p>
+      <p>Build a lineup for any round to see handicaps and strokes. In 2v2, team handicap is ${pct(settings.lowerPct)} of the lower handicap plus ${pct(settings.higherPct)} of the higher; in singles, strokes are the difference between the two players' handicaps. Singles are flight-matched (A v A, B v B). Nobody plays the same opponent twice across the three rounds, so opponents a player has already met are unavailable. Matchups marked Official come from the posted tee sheet and can't be changed here.${courseMode() ? ' Handicaps are course handicaps (Index × Slope ÷ 113 + Rating − Par) for the course where each format is played.' : ''} This is a preview only; official matchups are posted on the Schedule.</p>
     </details>
     <div class="toolbar">
-      <div class="segmented" role="group" aria-label="Format">
-        ${scheduledModes().map((m) => `<button class="eyebrow" data-mode="${m}" aria-pressed="${m === state.mode}">${FORMATS[m].title}</button>`).join('')}
+      <div class="toolbar__views">
+        <div class="segmented view" role="group" aria-label="View">
+          <button class="eyebrow" data-view="round" aria-pressed="${!board}">One round</button>
+          <button class="eyebrow" data-view="board" aria-pressed="${board}">All rounds</button>
+        </div>
+        ${board ? '' : `
+        <div class="segmented" role="group" aria-label="Format">
+          ${scheduledModes().map((m) => `<button class="eyebrow" data-mode="${m}" aria-pressed="${m === state.mode}">${FORMATS[m].title}</button>`).join('')}
+        </div>`}
       </div>
       <div class="btn-row">
-        <button class="btn" data-action="fill-all"${allLocked ? ' disabled' : ''}>Fill all</button>
-        <button class="btn" data-action="clear-all"${allLocked ? ' disabled' : ''}>Clear all</button>
-        <button class="btn btn--solid" data-action="share">Copy link</button>
+        ${board ? `
+        <button class="btn" data-action="fill-all"${off}>Fill all</button>
+        <button class="btn" data-action="clear-all"${off}>Clear all</button>` : `
+        <button class="btn" data-action="random"${off}>${state.mode === 'Singles' ? 'Auto Fill' : 'Random Fill'}</button>
+        <button class="btn" data-action="clear"${off}>Clear</button>`}
+        <button class="btn btn--solid" data-action="share">Copy Link</button>
       </div>
     </div>
-    <div class="board">${scheduledModes().map(renderColumn).join('')}</div>`;
+    ${board ? `<div class="board">${scheduledModes().map(renderColumn).join('')}</div>` : renderRound()}`;
 }
 
 // ---------- Events ----------
@@ -407,6 +524,15 @@ function update(focus = sel) {
   if (focus) document.getElementById(slotId(focus))?.focus();
 }
 
+app.addEventListener('change', (e) => {
+  const s = e.target.closest('select[data-match]');
+  if (!s || isLocked(+s.dataset.match, state.mode)) return;
+  picks(state.mode)[+s.dataset.match][s.dataset.side][+s.dataset.pos] = s.value;
+  writeHash();
+  render();
+  document.getElementById(s.id)?.focus();
+});
+
 app.addEventListener('click', async (e) => {
   const btn = e.target.closest('button');
   if (!btn) return;
@@ -420,14 +546,18 @@ app.addEventListener('click', async (e) => {
   }
   if (btn.dataset.mode) {
     state.mode = btn.dataset.mode;
-    if (sel?.mode !== state.mode) sel = null;
+    return update();
+  }
+  if (btn.dataset.view) {
+    state.board = btn.dataset.view === 'board';
+    sel = null;
     return update();
   }
   if ('pick' in btn.dataset) pick(btn.dataset.pick);
   else if (action === 'remove') picks(sel.mode)[sel.match][sel.side][sel.pos] = '';
   else if (action === 'close') sel = null;
-  else if (action === 'random') { sel = null; randomFill(btn.dataset.for); }
-  else if (action === 'clear') { sel = null; clearEditable(btn.dataset.for); }
+  else if (action === 'random') { sel = null; randomFill(btn.dataset.for ?? state.mode); }
+  else if (action === 'clear') { sel = null; clearEditable(btn.dataset.for ?? state.mode); }
   else if (action === 'fill-all') { sel = null; fillAll(); }
   else if (action === 'clear-all') { sel = null; MODES.forEach(clearEditable); }
   else if (action === 'share') {
@@ -437,7 +567,7 @@ app.addEventListener('click', async (e) => {
     } catch {
       prompt('Copy this link:', location.href);
     }
-    setTimeout(() => { btn.textContent = 'Copy link'; }, 1500);
+    setTimeout(() => { btn.textContent = 'Copy Link'; }, 1500);
     return;
   } else return;
   update(sel ?? was);
@@ -448,6 +578,12 @@ document.addEventListener('keydown', (e) => {
   const was = sel;
   sel = null;
   update(was);
+});
+
+// Narrowing the window drops back to one round; widening it again restores the board if it was chosen.
+wide.addEventListener('change', () => {
+  sel = null;
+  if (settings) render();
 });
 
 // replaceState doesn't fire this, so it only runs for pasted/edited links.
