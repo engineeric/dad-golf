@@ -54,7 +54,7 @@ function eventFor(day) {
     date: day.date,
     teeTime,
     minutes: data.settings.roundMinutes,
-    location: [day.course, day.address].filter(Boolean).join(', '),
+    location: placeQuery(day),
     description: lines.join('\n'),
     url: `${location.origin}${location.pathname}#day-${day.round}`,
   });
