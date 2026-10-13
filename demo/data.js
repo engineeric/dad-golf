@@ -91,13 +91,13 @@ export function demoTabs(name) {
       ...PRIZES.map((p) => csvRow(p[0] <= s.played ? p : [...p.slice(0, 3), '']))].join('\n'),
     Matches: [csvRow(['Round', 'Tee Time', 'Red 1', 'Red 2', 'Blue 1', 'Blue 2', 'Winner', 'Result']), ...matches.map(csvRow)].join('\n'),
     Schedule: [
-      csvRow(['Round', 'Format', 'Date', 'Course', 'Course URL', 'Address', 'Tees', 'Yardage', 'Par', 'Rating', 'Slope', 'Notes']),
+      csvRow(['Round', 'Format', 'Date', 'Course', 'Course URL', 'Address', 'Coordinates', 'Tees', 'Yardage', 'Par', 'Rating', 'Slope', 'Notes']),
       csvRow([1, 'Matched', isoDate(s.startIn), 'Swope Memorial Golf Course', 'https://www.swopememorialgolfcourse.com',
-        '6900 Swope Memorial Drive\nKansas City, MO 64132', 'Bronze', '6,079', '71', '70.2', '122', '']),
+        '6900 Swope Memorial Drive\nKansas City, MO 64132', '38.9990, -94.5020', 'Bronze', '6,079', '71', '70.2', '122', '']),
       csvRow([2, 'Mixed', isoDate(s.startIn + 1), 'Shoal Creek Golf Course', 'https://www.shoalcreekgolf.com',
-        '8905 North Shoal Creek Parkway\nKansas City, MO 64157', 'Blue', '6,266', '71', '70.5', '128', '']),
+        '8905 North Shoal Creek Parkway\nKansas City, MO 64157', '39.2540, -94.4930', 'Blue', '6,266', '71', '70.5', '128', '']),
       csvRow([3, 'Singles', isoDate(s.startIn + 2), 'Falcon Lakes Golf Club', 'https://falconlakesgolf.com',
-        '4605 Clubhouse Drive\nBasehor, KS 66007', 'White', '6,040', '71', '70.2', '122', '']),
+        '4605 Clubhouse Drive\nBasehor, KS 66007', '39.1290, -94.9020', 'White', '6,040', '71', '70.2', '122', '']),
     ].join('\n'),
     Settings: [
       csvRow(['Edition', 'Red Team', 'Blue Team', 'Lower %', 'Higher %', 'Timezone', 'Round Minutes', 'MVP', 'Handicap']),

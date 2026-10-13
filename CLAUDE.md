@@ -69,7 +69,7 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 |---|---|---|
 | Players | Nickname, Handicap Index, Team, Flight, Captain | Flight is A or B. Captain is a checkbox. |
 | Matches | Round, Tee Time, Red 1, Red 2, Blue 1, Blue 2, Winner, Result | Winner is a team name or Halved; blank means not played. Result is like `3&2`, `2 UP` or `Halved`. Singles leave the "2" columns blank. Rows with the same round and tee time form one group. |
-| Schedule | Round, Format, Date, Course, Course URL, Address, Tees, Yardage, Par, Rating, Slope, Notes | Format is Matched, Mixed or Singles, one per day. Date is `yyyy-mm-dd`. Address may contain a line break. |
+| Schedule | Round, Format, Date, Course, Course URL, Address, Coordinates, Tees, Yardage, Par, Rating, Slope, Notes | Format is Matched, Mixed or Singles, one per day. Date is `yyyy-mm-dd`. Address may contain a line break. Coordinates is `lat, long` text (optional); it pins the course in Apple Calendar events. |
 | Prizes | Round, Hole, Prize, Winner | Hole prizes. Winner stays blank until awarded. |
 | Settings | Edition, Red Team, Blue Team, Lower %, Higher %, Timezone, Round Minutes, MVP, Handicap | **One header row and one value row**, not key/value pairs (see gotchas). Handicap is `Index` or `Course`. |
 

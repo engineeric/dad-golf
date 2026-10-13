@@ -230,6 +230,7 @@ export function buildDays({ schedule, matches, prizes = [] }) {
       course: info.course ?? '',
       url: info.url ?? '',
       address: info.address ?? '',
+      coords: info.coords ?? null,
       tees: info.tees ?? '',
       yardage: info.yardage ?? '',
       par: info.par ?? '',

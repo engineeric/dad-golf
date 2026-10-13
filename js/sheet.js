@@ -182,6 +182,14 @@ function normalizeMatches(rows, teams, aliases) {
     .filter((m) => m.round != null);
 }
 
+/** "38.9975, -94.4965" (as copied from a maps app) → { lat, lon }, or null when blank or out of range. */
+function parseCoords(value) {
+  const m = String(value ?? '').match(/^\s*(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)\s*$/);
+  if (!m) return null;
+  const [lat, lon] = [Number(m[1]), Number(m[2])];
+  return Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? { lat, lon } : null;
+}
+
 function normalizeSchedule(rows) {
   return (rows ?? [])
     .map((r) => ({
@@ -191,6 +199,7 @@ function normalizeSchedule(rows) {
       course: r.course || '',
       url: /^https?:\/\//i.test(r.courseurl) ? r.courseurl : r.courseurl ? `https://${r.courseurl}` : '',
       address: r.address || '',
+      coords: parseCoords(r.coordinates),
       tees: r.tees || '',
       yardage: r.yardage || '',
       par: r.par || '',

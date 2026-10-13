@@ -55,6 +55,9 @@ function eventFor(day) {
     teeTime,
     minutes: data.settings.roundMinutes,
     location: placeQuery(day),
+    place: day.course && day.coords
+      ? { title: day.course, address: day.address.replace(/\s*\n\s*/g, ', '), ...day.coords }
+      : null,
     description: lines.join('\n'),
     url: `${location.origin}${location.pathname}#day-${day.round}`,
   });

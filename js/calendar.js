@@ -22,18 +22,32 @@ const stampLocal = (t) => `${stampDate(t)}T${pad(t.h)}${pad(t.min)}00`;
 
 /**
  * Builds the event for a day. `teeTime` is the chosen start ({h, m}); without one
- * the event is all-day.
+ * the event is all-day. `place` ({ title, address, lat, lon }) pins the venue in Apple Calendar.
  */
-export function buildEvent({ uid, title, date, teeTime, minutes, location, description, url }) {
+export function buildEvent({ uid, title, date, teeTime, minutes, location, place, description, url }) {
   if (!date) return null;
   if (!teeTime) {
-    return { uid, title, location, description, url, allDay: true, start: { ...date }, end: addMinutes(date, 24 * 60) };
+    return { uid, title, location, place, description, url, allDay: true, start: { ...date }, end: addMinutes(date, 24 * 60) };
   }
   const start = { ...date, h: teeTime.h, min: teeTime.m };
-  return { uid, title, location, description, url, allDay: false, start, end: addMinutes(start, minutes) };
+  return { uid, title, location, place, description, url, allDay: false, start, end: addMinutes(start, minutes) };
 }
 
 const escapeText = (s) => String(s).replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/([,;])/g, '\\$1');
+const quoteParam = (s) => `"${String(s).replace(/["\r\n]/g, ' ').trim()}"`;
+
+/**
+ * A text LOCATION is only ever searched, and Apple Calendar finds just the street address in it.
+ * Its own structured-location property (undocumented, but what Calendar itself writes) pins the
+ * coordinates under the course name. LOCATION reads "title\naddress", as Calendar writes it.
+ */
+function placeLines({ title, address, lat, lon }) {
+  return [
+    `LOCATION:${escapeText(address ? `${title}\n${address}` : title)}`,
+    `GEO:${lat};${lon}`,
+    `X-APPLE-STRUCTURED-LOCATION;VALUE=URI;${address ? `X-ADDRESS=${quoteParam(address)};` : ''}X-APPLE-RADIUS=200;X-APPLE-REFERENCEFRAME=1;X-TITLE=${quoteParam(title)}:geo:${lat},${lon}`,
+  ];
+}
 
 /** Folds content lines to 75 octets per RFC 5545. */
 function fold(line) {
@@ -62,7 +76,8 @@ export function toICS(events, timezone) {
     if (e.allDay) lines.push(`DTSTART;VALUE=DATE:${stampDate(e.start)}`, `DTEND;VALUE=DATE:${stampDate(e.end)}`);
     else lines.push(`DTSTART;TZID=${timezone}:${stampLocal(e.start)}`, `DTEND;TZID=${timezone}:${stampLocal(e.end)}`);
     lines.push(`SUMMARY:${escapeText(e.title)}`);
-    if (e.location) lines.push(`LOCATION:${escapeText(e.location)}`);
+    if (e.place) lines.push(...placeLines(e.place));
+    else if (e.location) lines.push(`LOCATION:${escapeText(e.location)}`);
     if (e.description) lines.push(`DESCRIPTION:${escapeText(e.description)}`);
     if (e.url) lines.push(`URL:${e.url}`);
     lines.push('END:VEVENT');

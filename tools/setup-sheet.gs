@@ -80,7 +80,7 @@ function setupSheet() {
 
   // ---------- Schedule ----------
   const schedule = createTab(ss, 'Schedule',
-    ['Round', 'Format', 'Date', 'Course', 'Course URL', 'Address', 'Tees', 'Yardage', 'Par', 'Rating', 'Slope', 'Notes'], log);
+    ['Round', 'Format', 'Date', 'Course', 'Course URL', 'Address', 'Coordinates', 'Tees', 'Yardage', 'Par', 'Rating', 'Slope', 'Notes'], log);
   const sched = (h) => ensureColumn(schedule, h, log).index;
   if (schedule.getRange('A2').isBlank()) schedule.getRange('A2:A4').setValues([[1], [2], [3]]).setHorizontalAlignment('center');
   schedule.getRange(2, sched('Format'), 3).setDataValidation(list(['Matched', 'Mixed', 'Singles']));
@@ -90,6 +90,8 @@ function setupSheet() {
   schedule.getRange(2, sched('Par'), 3).setNumberFormat('0');
   schedule.getRange(2, sched('Rating'), 3).setNumberFormat('0.0');
   schedule.getRange(2, sched('Slope'), 3).setNumberFormat('0');
+  // "lat, long" as copied from a maps app; kept as text so it stays one cell.
+  schedule.getRange(2, sched('Coordinates'), 3).setNumberFormat('@');
 
   // ---------- Prizes (hole prizes; Winner left blank until awarded) ----------
   const prizes = createTab(ss, 'Prizes', ['Round', 'Hole', 'Prize', 'Winner'], log);
