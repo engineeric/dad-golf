@@ -20,7 +20,7 @@ try { me = localStorage.getItem(ME_KEY) ?? ''; } catch { /* storage unavailable 
 const placeQuery = (day) => day.address || day.course;
 const googleDirections = (q) => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}`;
 const appleDirections = (q) => `https://maps.apple.com/?daddr=${encodeURIComponent(q)}`;
-const mapEmbed = (q) => `https://www.google.com/maps?q=${encodeURIComponent(q)}&output=embed`;
+const mapEmbed = (q) => `https://www.google.com/maps?q=${encodeURIComponent(q)}&t=h&output=embed`;
 
 const groupHas = (group, name) => group.matches.some((m) => m.red.includes(name) || m.blue.includes(name));
 
