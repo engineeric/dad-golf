@@ -47,14 +47,13 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 | File | Role |
 |---|---|
 | `index.html` + `js/scoreboard.js` | Scoreboard: banner, hero score, Tournament MVP card, day cards with match rows, strokes and hole prizes, then player standings and awards |
-| `schedule.html` + `js/schedule.js` | Per-day course info, map embed, directions, QR "send to phone", prize holes, tee sheet, "Find me", calendar export |
+| `schedule.html` + `js/schedule.js` | Per-day course info, map embed, directions, prize holes, tee sheet, "Find me", calendar export |
 | `teams.html` + `js/teams.js` | Rosters by flight, captains, average handicap index |
 | `matchups.html` + `js/matchups.js` | Lineup preview for Matched / Mixed / Singles, with team handicaps and strokes. Official matchups from the Matches tab are locked in; the rest is editable. Opponents already met in another round are disabled, and Random/Auto Fill retries until it finds a lineup with no rematches. All three lineups are kept in the URL hash. |
 | `js/sheet.js` | Fetches and normalizes the sheet tabs, and handles demo mode |
 | `js/golf.js` | Pure rules: formats, handicaps, scoring, standings, awards, `buildDays` |
 | `js/ui.js` | Header/footer chrome, `esc`, chips, icons (trophy, star, flag), `applyEdition`, `withDemo` |
 | `js/calendar.js` | `.ics` generation with an America/Chicago VTIMEZONE, and Google Calendar links |
-| `js/vendor/qrcode.js` | qrcode-generator (MIT), vendored |
 | `css/theme.css` | Design tokens, light/dark mode, shared components |
 | `tools/setup-sheet.gs` | Apps Script that sets up or migrates the sheet |
 | `tools/serve.py` | Local server with caching disabled |

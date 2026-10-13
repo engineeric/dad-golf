@@ -5,10 +5,8 @@ import { applyEdition, ICONS, esc, holeBadge, playerChip, renderChrome, showErro
 
 renderChrome('schedule');
 const app = document.getElementById('app');
-const dialog = document.getElementById('qr');
 
 const ME_KEY = 'daddy.me';
-const canShare = typeof navigator.share === 'function' && matchMedia('(pointer: coarse)').matches;
 
 let data;
 let days = [];
@@ -138,7 +136,6 @@ function renderDay(day) {
             <div class="btn-row">
               <a class="btn btn--solid" href="${esc(googleDirections(q))}" target="_blank" rel="noopener">${ICONS.pin} Google Maps</a>
               <a class="btn btn--solid" href="${esc(appleDirections(q))}" target="_blank" rel="noopener">${ICONS.pin} Apple Maps</a>
-              <button class="btn" data-action="${canShare ? 'share' : 'qr'}" data-round="${day.round}">${ICONS.phone} ${canShare ? 'Share' : 'Send to Phone'}</button>
             </div>` : ''}
         </div>
         <div class="map">
@@ -173,29 +170,6 @@ function render() {
   app.innerHTML = `${renderFindMe()}<div class="stack">${days.map(renderDay).join('')}</div>`;
 }
 
-// ---------- Send to phone ----------
-
-function qrSvg(text) {
-  const qr = window.qrcode(0, 'M');
-  qr.addData(text);
-  qr.make();
-  return qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
-}
-
-function openQr(day) {
-  const q = placeQuery(day);
-  dialog.querySelector('#qr-title').textContent = day.course || 'Directions';
-  dialog.querySelector('.qr__body').innerHTML = `
-    <div>${qrSvg(appleDirections(q))}<p class="eyebrow">Apple Maps</p></div>
-    <div>${qrSvg(googleDirections(q))}<p class="eyebrow">Google Maps</p></div>`;
-  dialog.querySelector('.qr__foot .muted').textContent = `Day ${day.round}${day.date ? ` · ${formatDate(day.date, { weekday: 'short', month: 'short', day: 'numeric' })}` : ''}`;
-  dialog.showModal();
-}
-
-dialog.addEventListener('click', (e) => {
-  if (e.target === dialog || e.target.closest('[data-close]')) dialog.close();
-});
-
 // ---------- Events ----------
 
 app.addEventListener('change', (e) => {
@@ -207,7 +181,7 @@ app.addEventListener('change', (e) => {
   mine?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 });
 
-app.addEventListener('click', async (e) => {
+app.addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-action]');
   if (!btn) return;
   const day = days.find((d) => d.round === +btn.dataset.round);
@@ -218,14 +192,6 @@ app.addEventListener('click', async (e) => {
       break;
     case 'ics-all':
       downloadICS(days.map(eventFor).filter(Boolean), tz, 'daddy-invitational.ics');
-      break;
-    case 'qr':
-      openQr(day);
-      break;
-    case 'share':
-      try {
-        await navigator.share({ title: day.course || `Day ${day.round}`, text: [day.course, day.address].filter(Boolean).join('\n'), url: googleDirections(placeQuery(day)) });
-      } catch { /* dismissed */ }
       break;
   }
 });

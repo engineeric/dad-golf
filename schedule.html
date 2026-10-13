@@ -102,24 +102,6 @@
     .tee__match .label { color: var(--muted); font-size: 9px; }
     .empty { padding: 18px 22px; border-top: 1px solid var(--rule); }
 
-    dialog {
-      border: 0;
-      background: var(--surface);
-      color: var(--ink);
-      border-radius: 6px;
-      padding: 0;
-      max-width: min(560px, calc(100vw - 32px));
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
-    }
-    dialog::backdrop { background: rgba(13, 28, 56, 0.6); }
-    .qr__head { background: var(--navy); color: var(--white); padding: 16px 20px; border-bottom: 3px solid var(--gold); }
-    .qr__head h2 { margin: 4px 0 0; font-family: var(--serif); font-size: 22px; }
-    .qr__head .eyebrow { color: var(--gold); }
-    .qr__body { padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: center; }
-    .qr__body svg { width: 100%; height: auto; display: block; }
-    .qr__body p { margin: 8px 0 0; }
-    .qr__foot { padding: 0 20px 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-
     @media (max-width: 900px) {
       .day__body { grid-template-columns: 1fr; }
       .map { border-left: 0; border-top: 1px solid var(--rule); min-height: 240px; }
@@ -158,19 +140,6 @@
   </main>
   <footer class="site-footer"></footer>
 
-  <dialog id="qr" aria-labelledby="qr-title">
-    <div class="qr__head">
-      <span class="eyebrow">Scan with your phone's camera</span>
-      <h2 id="qr-title">Directions</h2>
-    </div>
-    <div class="qr__body"></div>
-    <div class="qr__foot">
-      <span class="muted"></span>
-      <button class="btn btn--solid" data-close>Close</button>
-    </div>
-  </dialog>
-
-  <script src="js/vendor/qrcode.js"></script>
   <script type="module" src="js/schedule.js"></script>
 </body>
 </html>
