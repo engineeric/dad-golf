@@ -82,7 +82,7 @@ function renderSide(side, names, match, info) {
   return `
     <div class="side side--${side} ${state}">
       <span class="side__names">${label}</span>
-      ${hcp != null ? `<span class="side__hcp num">${names.length > 1 ? 'Team HCP' : 'HCP'} ${formatPlaying(hcp)}${gets}</span>` : ''}
+      ${hcp != null ? `<span class="side__hcp num">${side === 'blue' ? gets : ''}${names.length > 1 ? 'Team HCP' : 'HCP'} ${formatPlaying(hcp)}${side === 'red' ? gets : ''}</span>` : ''}
     </div>`;
 }
 

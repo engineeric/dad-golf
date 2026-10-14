@@ -108,7 +108,8 @@
     .side--blue { text-align: right; }
     .side__names { font-size: 17px; font-weight: 600; }
     .side__hcp { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
-    .side--blue .side__hcp { justify-content: flex-end; }
+    /* The stroke pill sits inside the handicap; wrap-reverse keeps the handicap on top when it wraps. */
+    .side--blue .side__hcp { justify-content: flex-end; flex-wrap: wrap-reverse; }
     .gets {
       background: var(--gold);
       color: var(--navy);
