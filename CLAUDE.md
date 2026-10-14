@@ -89,7 +89,7 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
   - **Mixed:** 2v2 with AB pairs, 4 matches.
   - **Singles:** 1v1, 8 matches, flight-matched: four A v A, then four B v B.
 - **No rematches** (commissioner's rule): a player can face any given opponent only once across all three rounds, so the 2v2 matchups largely decide the singles draw. The Matchups preview enforces it in every format: each round is checked against the other two. Nothing validates the Matches tab itself, but an official matchup that breaks the rule shows a red "Rematch" message in the preview.
-- **The Matches tab is the official, locked-in matchups.** Whatever is posted there for a day is copied into that format's preview, tagged "Official" and not editable; only unposted matches can be previewed.
+- **The Matches tab is the official, locked-in matchups.** Whatever is posted there for a day is copied into that format's preview, tagged "Official" and not editable; only unposted matches can be previewed. Locking is per side: a row with only one team's players posted locks that side and leaves the other editable (the "Official" tag appears once both sides are posted).
 - **Day for each format:** set by the Schedule `Format` column, not fixed in code. Matchups finds the course for a format by matching the day's Format. The Matchups format buttons are ordered by that schedule and open on the first format played.
 
 **Handicaps**

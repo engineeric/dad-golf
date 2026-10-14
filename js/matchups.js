@@ -81,9 +81,18 @@ function readHash() {
 
 // ---------- Official matchups (Matches tab) are locked into the preview ----------
 
-/** Per format, which match slots hold an official matchup and so can't be edited. */
+/** Per format and match, which sides are posted and so can't be edited. A side not posted yet stays open. */
 const locked = Object.fromEntries(MODES.map((m) => [m, []]));
-const isLocked = (match, mode) => !!locked[mode][match];
+/** Whether a side of a match is official; without a side, whether the whole match is. */
+const isLocked = (match, mode, side) => {
+  const l = locked[mode][match];
+  return !!l && (side ? l[side] : l.red && l.blue);
+};
+const allLocked = (mode) => locked[mode].every((l) => l.red && l.blue);
+/** Everyone posted in a format's official matchups. */
+const officialNames = (mode) => new Set(
+  picks(mode).flatMap((m, i) => SIDES.flatMap((s) => (isLocked(i, mode, s) ? m[s] : []))).filter(Boolean),
+);
 
 const byFlight = (names) => [...names].sort((a, b) => (byName(a)?.flight ?? '').localeCompare(byName(b)?.flight ?? ''));
 
@@ -91,24 +100,27 @@ const byFlight = (names) => [...names].sort((a, b) => (byName(a)?.flight ?? '').
 function applyOfficial() {
   for (const mode of MODES) {
     const slots = FORMATS[mode].slots;
-    locked[mode] = slots.map(() => false);
+    locked[mode] = slots.map(() => ({ red: false, blue: false }));
+    const open = (idx) => !locked[mode][idx].red && !locked[mode][idx].blue;
     const day = days.find((d) => d.format === mode);
     const official = (day?.matches ?? []).filter((m) => m.red.length || m.blue.length);
     const lineup = state.picks[mode];
     for (const m of official) {
       const label = byFlight(m.red.length ? m.red : m.blue).map((n) => byName(n)?.flight ?? '').join('');
-      let i = slots.findIndex((slot, idx) => !locked[mode][idx] && slot === label);
-      if (i < 0) i = locked[mode].indexOf(false);
+      let i = slots.findIndex((slot, idx) => open(idx) && slot === label);
+      if (i < 0) i = slots.findIndex((_, idx) => open(idx));
       if (i < 0) break;
-      locked[mode][i] = true;
       const fill = (names) => Array.from({ length: size(mode) }, (_, pos) => byFlight(names)[pos] ?? '');
-      lineup[i] = { red: fill(m.red), blue: fill(m.blue) };
+      for (const side of SIDES) {
+        if (!m[side].length) continue;
+        locked[mode][i][side] = true;
+        lineup[i][side] = fill(m[side]);
+      }
     }
-    // Anyone in an official match can't also sit in an editable one.
-    const taken = new Set(lineup.flatMap((m, i) => (locked[mode][i] ? [...m.red, ...m.blue] : [])).filter(Boolean));
+    // Anyone in an official match can't also sit in an editable slot.
+    const taken = officialNames(mode);
     lineup.forEach((m, i) => {
-      if (locked[mode][i]) return;
-      for (const side of SIDES) m[side] = m[side].map((n) => (taken.has(n) ? '' : n));
+      for (const side of SIDES) if (!isLocked(i, mode, side)) m[side] = m[side].map((n) => (taken.has(n) ? '' : n));
     });
   }
 }
@@ -153,7 +165,8 @@ const shuffle = (arr) => {
   return a;
 };
 
-const blank = (m) => ({ red: m.red.map(() => ''), blue: m.blue.map(() => '') });
+/** A match with its editable sides emptied. */
+const blank = (m, i, mode) => Object.fromEntries(SIDES.map((s) => [s, isLocked(i, mode, s) ? m[s] : m[s].map(() => '')]));
 
 /**
  * Fills a format's editable matches at random, keeping official ones, and retries until it finds
@@ -162,7 +175,7 @@ const blank = (m) => ({ red: m.red.map(() => ''), blue: m.blue.map(() => '') });
 function randomFill(mode) {
   faced[mode] = buildFaced(mode);
   const lineup = picks(mode);
-  const official = new Set(lineup.flatMap((m, i) => (isLocked(i, mode) ? [...m.red, ...m.blue] : [])).filter(Boolean));
+  const official = officialNames(mode);
   const free = (side, flight) => players.filter((p) => fits(p, side, flight) && !official.has(p.name));
   const rematches = (cand) => cand.reduce((n, m, i) => (isLocked(i, mode) ? n
     : n + m.red.reduce((k, r) => k + m.blue.filter((b) => metIn(r, b, mode)).length, 0)), 0);
@@ -170,11 +183,11 @@ function randomFill(mode) {
   let best = lineup;
   let fewest = Infinity;
   for (let attempt = 0; attempt < 4000 && fewest > 0; attempt++) {
-    const cand = lineup.map((m, i) => (isLocked(i, mode) ? m : blank(m)));
+    const cand = lineup.map((m, i) => blank(m, i, mode));
     for (const side of SIDES) {
       const pools = { A: shuffle(free(side, 'A')), B: shuffle(free(side, 'B')) };
       cand.forEach((m, i) => {
-        if (!isLocked(i, mode)) m[side] = m[side].map((_, pos) => pools[slotFlight(i, pos, mode)]?.shift()?.name ?? '');
+        if (!isLocked(i, mode, side)) m[side] = m[side].map((_, pos) => pools[slotFlight(i, pos, mode)]?.shift()?.name ?? '');
       });
     }
     const count = rematches(cand);
@@ -185,7 +198,7 @@ function randomFill(mode) {
 }
 
 function clearEditable(mode) {
-  state.picks[mode] = picks(mode).map((m, i) => (isLocked(i, mode) ? m : blank(m)));
+  state.picks[mode] = picks(mode).map((m, i) => blank(m, i, mode));
 }
 
 /** Refills every format in schedule order, starting over until the three rounds have no rematches between them. */
@@ -205,8 +218,8 @@ function nextEmpty(mode, from) {
   const lineup = picks(mode);
   for (let n = 0; n < lineup.length; n++) {
     const match = (from + n) % lineup.length;
-    if (isLocked(match, mode)) continue;
     for (const side of SIDES) {
+      if (isLocked(match, mode, side)) continue;
       const pos = lineup[match][side].indexOf('');
       if (pos >= 0) return { mode, match, side, pos };
     }
@@ -265,7 +278,7 @@ function renderSelect(match, side, pos, used) {
     }).join('');
   return `
     <label class="visually-hidden" for="s-${match}-${side}-${pos}">Team ${esc(settings.teams[side])} match ${match + 1} player ${pos + 1}${flight ? ` (Flight ${flight})` : ''}</label>
-    <select class="select" id="s-${match}-${side}-${pos}" data-match="${match}" data-side="${side}" data-pos="${pos}"${isLocked(match, mode) ? ' disabled' : ''}>
+    <select class="select" id="s-${match}-${side}-${pos}" data-match="${match}" data-side="${side}" data-pos="${pos}"${isLocked(match, mode, side) ? ' disabled' : ''}>
       <option value="">${flight ? `Flight ${flight} player…` : 'Select player…'}</option>${options}
     </select>`;
 }
@@ -352,7 +365,7 @@ function renderSlot(slot) {
   const name = picks(mode)[match][side][pos];
   const p = byName(name);
   const hcp = p ? formatPlaying(playing(p, mode)) : '';
-  if (isLocked(match, mode)) {
+  if (isLocked(match, mode, side)) {
     return `<span class="pc pc--${side}"><span class="pc__name">${esc(name) || '—'}</span><span class="num">${hcp}</span></span>`;
   }
   const flight = slotFlight(match, pos, mode);
@@ -370,6 +383,7 @@ function renderTray() {
   const flight = slotFlight(match, pos, mode);
   const lineup = picks(mode);
   const current = lineup[match][side][pos];
+  const posted = officialNames(mode);
   const where = new Map();
   lineup.forEach((m, i) => [...m.red, ...m.blue].filter(Boolean).forEach((n) => where.set(n, i)));
   const cards = players
@@ -377,7 +391,7 @@ function renderTray() {
     .sort((a, b) => a.hcp - b.hcp)
     .map((p) => {
       const at = p.name === current ? undefined : where.get(p.name);
-      const official = at != null && isLocked(at, mode);
+      const official = at != null && posted.has(p.name);
       // Can't be drawn against an opponent already chosen in this match if they've met in another round.
       const met = p.name !== current
         ? lineup[match][otherSide(side)].map((opp) => metIn(p.name, opp, mode)).find(Boolean) : undefined;
@@ -426,7 +440,7 @@ function renderBoardMatch(mode, match) {
         <h3>Match ${match + 1}${label ? ` <span class="flight">${label}</span>` : ''}</h3>
         <span class="match__tags">
           ${!singles && complete ? `<span class="num" title="Team handicaps">${formatPlaying(hcp.red)} v ${formatPlaying(hcp.blue)}</span>` : ''}
-          ${isLocked(match, mode) && !locked[mode].every(Boolean) ? '<span class="official eyebrow">Official</span>' : ''}
+          ${isLocked(match, mode) && !allLocked(mode) ? '<span class="official eyebrow">Official</span>' : ''}
         </span>
       </header>
       <div class="match__row">
@@ -458,7 +472,7 @@ function renderColumn(mode) {
           <h2 class="eyebrow">${day ? `Day ${day.round} · ` : ''}${FORMATS[mode].title}</h2>
           <span class="col__course">${basisText(mode)}</span>
         </div>
-        ${locked[mode].every(Boolean) ? '<span class="official eyebrow">Official</span>' : `
+        ${allLocked(mode) ? '<span class="official eyebrow">Official</span>' : `
         <div class="col__tools">
           <button class="col__btn eyebrow" data-action="random" data-for="${mode}">${mode === 'Singles' ? 'Auto fill' : 'Random'}</button>
           <button class="col__btn eyebrow" data-action="clear" data-for="${mode}">Clear</button>
@@ -479,7 +493,7 @@ function render() {
   faced = Object.fromEntries(MODES.map((m) => [m, buildFaced(m)]));
   const board = boardOn();
   const pct = (n) => `${Math.round(n * 100)}%`;
-  const noneEditable = (board ? MODES : [state.mode]).every((m) => locked[m].every(Boolean));
+  const noneEditable = (board ? MODES : [state.mode]).every(allLocked);
   const off = noneEditable ? ' disabled' : '';
 
   app.innerHTML = `
@@ -526,7 +540,7 @@ function update(focus = sel) {
 
 app.addEventListener('change', (e) => {
   const s = e.target.closest('select[data-match]');
-  if (!s || isLocked(+s.dataset.match, state.mode)) return;
+  if (!s || isLocked(+s.dataset.match, state.mode, s.dataset.side)) return;
   picks(state.mode)[+s.dataset.match][s.dataset.side][+s.dataset.pos] = s.value;
   writeHash();
   render();
