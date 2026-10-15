@@ -1,6 +1,6 @@
 import { loadData } from './sheet.js';
 import {
-  FORMATS, SIDES, buildDays, courseData, formatPlaying, playingHandicap, round1, sideHandicap, strokes,
+  FORMATS, SIDES, buildDays, courseData, formatHcp, formatPlaying, playingHandicap, round1, sideHandicap, strokes,
 } from './golf.js';
 import { applyEdition, esc, renderChrome, showError } from './ui.js';
 
@@ -246,6 +246,7 @@ const formatDay = (mode) => days.find((d) => d.format === mode) ?? null;
 const previewDay = (mode) => (courseMode() && courseData(formatDay(mode)) ? formatDay(mode) : null);
 
 const playing = (p, mode) => playingHandicap(p, settings, previewDay(mode));
+const formatTotal = (n, mode) => (size(mode) === 1 ? formatPlaying(n) : formatHcp(n));
 const sideHcp = (names, mode) => (names.every(Boolean) ? sideHandicap(names, playerMap, settings, previewDay(mode)) : null);
 
 // ---------- One-round view (the default): a card per match, with drop-downs ----------
@@ -317,7 +318,7 @@ function renderMatch(match, used) {
             <span class="pair__label eyebrow fg-${side}">Team ${esc(settings.teams[side])}</span>
             ${m[side].map((_, pos) => renderSelect(match, side, pos, used)).join('')}
             <div class="pair__hcp">
-              <span><span class="eyebrow">${singles ? 'HCP' : 'Team HCP'}</span><br><strong>${formatPlaying(hcp[side])}</strong></span>
+              <span><span class="eyebrow">${singles ? 'HCP' : 'Team HCP'}</span><br><strong>${singles ? formatPlaying(hcp[side]) : formatHcp(hcp[side])}</strong></span>
               ${receiver === side ? `<span class="gets">+${diff}</span>` : ''}
             </div>
           </div>`).join('')}
@@ -340,9 +341,9 @@ function renderRound() {
   return `
     ${renderBasis()}
     <section class="card summary" aria-label="Lineup totals">
-      <div class="g bg-red"><span class="eyebrow">${esc(settings.teams.red)} total</span><strong>${complete ? formatPlaying(round1(totals.red)) : '—'}</strong></div>
+      <div class="g bg-red"><span class="eyebrow">${esc(settings.teams.red)} total</span><strong>${complete ? formatTotal(round1(totals.red), mode) : '—'}</strong></div>
       <div class="mid"><span class="eyebrow">${FORMATS[mode].sub}</span><br><span class="num">${complete} of ${matchCount(mode)}</span> matches set</div>
-      <div class="e bg-blue"><span class="eyebrow">${esc(settings.teams.blue)} total</span><strong>${complete ? formatPlaying(round1(totals.blue)) : '—'}</strong></div>
+      <div class="e bg-blue"><span class="eyebrow">${esc(settings.teams.blue)} total</span><strong>${complete ? formatTotal(round1(totals.blue), mode) : '—'}</strong></div>
     </section>
     <div class="grid">${picks(mode).map((_, i) => renderMatch(i, used)).join('')}</div>`;
 }
@@ -439,7 +440,7 @@ function renderBoardMatch(mode, match) {
       <header class="match__head">
         <h3>Match ${match + 1}${label ? ` <span class="flight">${label}</span>` : ''}</h3>
         <span class="match__tags">
-          ${!singles && complete ? `<span class="num" title="Team handicaps">${formatPlaying(hcp.red)} v ${formatPlaying(hcp.blue)}</span>` : ''}
+          ${!singles && complete ? `<span class="num" title="Team handicaps">${formatHcp(hcp.red)} v ${formatHcp(hcp.blue)}</span>` : ''}
           ${isLocked(match, mode) && !allLocked(mode) ? '<span class="official eyebrow">Official</span>' : ''}
         </span>
       </header>
@@ -463,7 +464,7 @@ function renderColumn(mode) {
   }
   const day = formatDay(mode);
   const total = (side) => `
-    <div><span class="eyebrow fg-${side}">${esc(settings.teams[side])} total</span><strong>${complete ? formatPlaying(round1(totals[side])) : '—'}</strong></div>`;
+    <div><span class="eyebrow fg-${side}">${esc(settings.teams[side])} total</span><strong>${complete ? formatTotal(round1(totals[side]), mode) : '—'}</strong></div>`;
 
   return `
     <section class="card col" aria-label="${FORMATS[mode].title}">
