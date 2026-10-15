@@ -134,7 +134,7 @@ export function courseHandicap(index, day) {
 export const playingHandicap = (player, settings, day) =>
   (usesCourseHandicap(settings, day) ? courseHandicap(player.hcp, day) : player.hcp);
 
-/** Shows course handicaps as whole numbers, indexes (and weighted team values) to one decimal. */
+/** Shows course handicaps as whole numbers and indexes to one decimal. */
 export const formatPlaying = (n) => (n == null ? '—' : Number.isInteger(n) ? String(n) : n.toFixed(1));
 
 /** Individual handicap for one player, weighted team handicap for two; null if any is unknown. */
@@ -289,7 +289,7 @@ export const datedDays = (days) => days.filter((d) => d.date).sort((a, b) => day
 export const currentDay = (days, timeZone, now = Date.now()) =>
   datedDays(days).filter((d) => daysUntil(d.date, timeZone, now) <= 0).at(-1) ?? null;
 
-export const formatHcp =(n) => (n == null ? '—' : n.toFixed(1));
+export const formatHcp = (n) => (n == null ? '—' : n.toFixed(1));
 
 export function formatPts(n) {
   const whole = Math.floor(n);

@@ -1,6 +1,6 @@
 import { loadData } from './sheet.js';
 import {
-  SIDES, TOTAL_POINTS, TO_WIN, awards, buildDays, currentDay, datedDays, dayTitle, daysUntil, formatDate, formatPts,
+  SIDES, TOTAL_POINTS, TO_WIN, awards, buildDays, currentDay, datedDays, dayTitle, daysUntil, formatDate, formatHcp, formatPts,
   formatTime, isDayComplete, loserResult, formatPlaying, playerStandings, points, sideHandicap, strokes,
 } from './golf.js';
 import { ICONS, applyEdition, esc, holeBadge, playerChip, renderChrome, showError, withDemo } from './ui.js';
@@ -82,7 +82,7 @@ function renderSide(side, names, match, info) {
   return `
     <div class="side side--${side} ${state}">
       <span class="side__names">${label}</span>
-      ${hcp != null ? `<span class="side__hcp num">${side === 'blue' ? gets : ''}${names.length > 1 ? 'Team HCP' : 'HCP'} ${formatPlaying(hcp)}${side === 'red' ? gets : ''}</span>` : ''}
+      ${hcp != null ? `<span class="side__hcp num">${side === 'blue' ? gets : ''}${names.length > 1 ? `Team HCP ${formatHcp(hcp)}` : `HCP ${formatPlaying(hcp)}`}${side === 'red' ? gets : ''}</span>` : ''}
     </div>`;
 }
 
