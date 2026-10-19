@@ -19,27 +19,34 @@ const PLAYERS = `"Nickname","Handicap Index","Team","Flight","Captain"
 "Garrett","19.1","Garrett","B","TRUE"
 "Jeff","20.2","Garrett","B","FALSE"`;
 
-// [round, tee time, red 1, red 2, blue 1, blue 2, winner, result]
+// [round, tee time, red 1, red 2, blue 1, blue 2, leader, up, thru]; finals are derived (4 up thru 15 → 4&3).
 const MATCHES = [
-  [1, '8:00 AM', 'Brandon', 'JK', 'JD', 'Eric', 'Eric', '4&3'],
-  [1, '8:10 AM', 'Taylor', 'Braden', 'Cody', 'Cole', 'Garrett', '1 UP'],
-  [1, '8:20 AM', 'Nate', 'Rikky', 'Jbone', 'Landon', 'Halved', ''],
-  [1, '8:30 AM', 'Garrett', 'Jeff', 'Brad', 'Drew', 'Garrett', '2&1'],
+  [1, '8:00 AM', 'Brandon', 'JK', 'JD', 'Eric', 'Eric', 4, 15],
+  [1, '8:10 AM', 'Taylor', 'Braden', 'Cody', 'Cole', 'Garrett', 1, 18],
+  [1, '8:20 AM', 'Nate', 'Rikky', 'Jbone', 'Landon', 'AS', '', 18],
+  [1, '8:30 AM', 'Garrett', 'Jeff', 'Brad', 'Drew', 'Garrett', 2, 17],
   // Day 2 pairs nobody with a day-1 opponent, which leaves exactly one legal singles draw.
-  [2, '9:00 AM', 'Brandon', 'Nate', 'Cody', 'Brad', 'Halved', ''],
-  [2, '9:10 AM', 'JK', 'Rikky', 'Cole', 'Drew', 'Eric', '3&2'],
-  [2, '9:20 AM', 'Taylor', 'Garrett', 'JD', 'Jbone', 'Garrett', '2 UP'],
-  [2, '9:30 AM', 'Braden', 'Jeff', 'Eric', 'Landon', 'Eric', '5&4'],
+  [2, '9:00 AM', 'Brandon', 'Nate', 'Cody', 'Brad', 'AS', '', 18],
+  [2, '9:10 AM', 'JK', 'Rikky', 'Cole', 'Drew', 'Eric', 3, 16],
+  [2, '9:20 AM', 'Taylor', 'Garrett', 'JD', 'Jbone', 'Garrett', 2, 18],
+  [2, '9:30 AM', 'Braden', 'Jeff', 'Eric', 'Landon', 'Eric', 5, 14],
   // Singles: flight-matched (A v A, then B v B), no rematches.
-  [3, '10:00 AM', 'Brandon', '', 'Cole', '', 'Eric', '3&2'],
-  [3, '10:00 AM', 'JK', '', 'Cody', '', 'Garrett', '1 UP'],
-  [3, '10:10 AM', 'Taylor', '', 'Eric', '', 'Eric', '2&1'],
-  [3, '10:10 AM', 'Braden', '', 'JD', '', 'Eric', '2&1'],
-  [3, '10:20 AM', 'Nate', '', 'Drew', '', 'Garrett', '6&5'],
-  [3, '10:20 AM', 'Rikky', '', 'Brad', '', 'Eric', '1 UP'],
-  [3, '10:30 AM', 'Garrett', '', 'Landon', '', 'Halved', ''],
-  [3, '10:30 AM', 'Jeff', '', 'Jbone', '', 'Eric', '2 UP'],
+  [3, '10:00 AM', 'Brandon', '', 'Cole', '', 'Eric', 3, 16],
+  [3, '10:00 AM', 'JK', '', 'Cody', '', 'Garrett', 1, 18],
+  [3, '10:10 AM', 'Taylor', '', 'Eric', '', 'Eric', 2, 17],
+  [3, '10:10 AM', 'Braden', '', 'JD', '', 'Eric', 2, 17],
+  [3, '10:20 AM', 'Nate', '', 'Drew', '', 'Garrett', 6, 13],
+  [3, '10:20 AM', 'Rikky', '', 'Brad', '', 'Eric', 1, 18],
+  [3, '10:30 AM', 'Garrett', '', 'Landon', '', 'AS', '', 18],
+  [3, '10:30 AM', 'Jeff', '', 'Jbone', '', 'Eric', 2, 18],
 ];
+
+// Mid-round scores for the live scenarios, in tee order: [leader, up, thru], or null for no update yet.
+const LIVE = {
+  1: [['Eric', 2, 5], ['AS', '', 3], null, null],
+  3: [['Eric', 3, 16], ['AS', '', 18], ['Garrett', 2, 12], ['AS', '', 11],
+    ['Eric', 1, 10], ['Garrett', 3, 9], ['Eric', 1, 4], ['Garrett', 1, 2]],
+};
 
 // [round, hole, prize, winner]; winners only show for rounds that have been played.
 const PRIZES = [
@@ -57,13 +64,38 @@ const PRIZES = [
 
 const csvRow = (cells) => cells.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',');
 
-/** Days until round 1, and which rounds have results posted. */
+/**
+ * Days until round 1, which rounds have results posted, and the round being played
+ * right now (tee times shifted so it started `startedAgo` minutes ago).
+ */
 const SCENARIOS = {
   countdown: { startIn: 10, played: 0 },
+  teeoff: { startIn: 0, played: 0, live: 1, startedAgo: 25 },
   day1: { startIn: -1, played: 1 },
   midway: { startIn: -2, played: 2 },
+  live: { startIn: -2, played: 2, live: 3, startedAgo: 180 },
   final: { startIn: -3, played: 3, mvp: 'JD' },
 };
+
+const parseClock = (t) => {
+  const [, h, m, ap] = t.match(/(\d+):(\d+) (AM|PM)/);
+  return ((+h % 12) + (ap === 'PM' ? 12 : 0)) * 60 + +m;
+};
+const formatClock = (mins) => `${Math.floor(mins / 60) % 12 || 12}:${String(mins % 60).padStart(2, '0')} ${mins < 720 ? 'AM' : 'PM'}`;
+
+/** Minutes since midnight in the tournament's timezone. */
+function nowInChicago() {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' })
+    .formatToParts(Date.now()).map((x) => [x.type, x.value]));
+  return (+p.hour % 24) * 60 + +p.minute;
+}
+
+/** The live round's rows: tee times moved to around now, scores from LIVE. */
+function liveRows(rows, s) {
+  const first = Math.min(...rows.map((m) => parseClock(m[1])));
+  const shift = Math.max(0, nowInChicago() - s.startedAgo) - first;
+  return rows.map((m, i) => [...m.slice(0, 1), formatClock(Math.max(0, parseClock(m[1]) + shift)), ...m.slice(2, 6), ...(LIVE[s.live][i] ?? ['', '', ''])]);
+}
 
 function isoDate(offsetDays) {
   const d = new Date();
@@ -83,13 +115,17 @@ export function demoTabs(name) {
   const posted = Math.min(3, s.played + 1);
   const matches = MATCHES
     .filter(([round]) => round <= posted)
-    .map((m) => (m[0] <= s.played ? m : [...m.slice(0, 6), '', '']));
+    .map((m) => (m[0] <= s.played ? m : [...m.slice(0, 6), '', '', '']));
+  if (s.live) {
+    const idx = matches.flatMap((m, i) => (m[0] === s.live ? [i] : []));
+    liveRows(idx.map((i) => matches[i]), s).forEach((row, j) => { matches[idx[j]] = row; });
+  }
 
   return {
     Players: PLAYERS,
     Prizes: [csvRow(['Round', 'Hole', 'Prize', 'Winner']),
       ...PRIZES.map((p) => csvRow(p[0] <= s.played ? p : [...p.slice(0, 3), '']))].join('\n'),
-    Matches: [csvRow(['Round', 'Tee Time', 'Red 1', 'Red 2', 'Blue 1', 'Blue 2', 'Winner', 'Result']), ...matches.map(csvRow)].join('\n'),
+    Matches: [csvRow(['Round', 'Tee Time', 'Red 1', 'Red 2', 'Blue 1', 'Blue 2', 'Leader', 'Up', 'Thru']), ...matches.map(csvRow)].join('\n'),
     Schedule: [
       csvRow(['Round', 'Format', 'Date', 'Course', 'Course URL', 'Address', 'Coordinates', 'Tees', 'Yardage', 'Par', 'Rating', 'Slope', 'Notes']),
       csvRow([1, 'Matched', isoDate(s.startIn), 'Swope Memorial Golf Course', 'https://www.swopememorialgolfcourse.com',

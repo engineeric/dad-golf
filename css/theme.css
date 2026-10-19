@@ -11,6 +11,7 @@
   --red: #b01230;
   --blue: #0d3d94;
   --white: #fff;
+  --live: #e8455f;
 
   /* Theme-dependent tokens: light defaults, dark overrides below.
      --cream doubles as the in-card secondary surface; --ink is body text. */
@@ -213,6 +214,21 @@ button, select { font: inherit; color: inherit; }
 }
 
 .banner p { margin: 6px 0 0; color: rgba(255, 255, 255, 0.75); }
+
+/* Pulsing "live" marker: the banner while a day is on, and in-progress match rows. */
+.live-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--live);
+  animation: live-pulse 1.6s ease-out infinite;
+}
+.live-dot--banner { margin-right: 12px; vertical-align: 0.15em; }
+@keyframes live-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(232, 69, 95, 0.6); }
+  70%, 100% { box-shadow: 0 0 0 8px rgba(232, 69, 95, 0); }
+}
 
 /* ---------- Main + footer ---------- */
 
@@ -509,7 +525,7 @@ main {
 @keyframes skel-pulse { from { opacity: 0.55; } to { opacity: 1; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .loader__crest svg, .skel { animation: none; }
+  .loader__crest svg, .skel, .live-dot { animation: none; }
 }
 
 @media (max-width: 720px) {

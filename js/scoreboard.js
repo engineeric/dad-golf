@@ -1,7 +1,7 @@
 import { loadData } from './sheet.js';
 import {
   SIDES, TOTAL_POINTS, TO_WIN, awards, buildDays, currentDay, datedDays, dayTitle, daysUntil, formatDate, formatHcp, formatPts,
-  formatTime, isDayComplete, loserResult, formatPlaying, playerStandings, points, sideHandicap, strokes,
+  formatTime, isDayComplete, isDayLive, loserResult, projectedPoints, formatPlaying, playerStandings, points, sideHandicap, strokes,
 } from './golf.js';
 import { ICONS, applyEdition, esc, holeBadge, playerChip, renderChrome, showError, withDemo } from './ui.js';
 
@@ -14,8 +14,8 @@ const banner = document.getElementById('banner');
 // Expanded <details> survive the auto-refresh re-render.
 const openPlayers = new Set();
 const openDays = new Set();
-/** One line: days to go before day 1, "Day N" on each day, "Final" once every match has a result. */
-function renderBanner(played, days, settings) {
+/** One line: days to go before day 1, "Day N" on each day ("· Live" while it's on), "Final" once every match has a result. */
+function renderBanner(played, days, settings, liveDay) {
   const tz = settings.timezone;
   const today = currentDay(days, tz);
   const first = datedDays(days)[0];
@@ -26,7 +26,9 @@ function renderBanner(played, days, settings) {
     const n = daysUntil(first.date, tz);
     title = `${n} day${n === 1 ? '' : 's'} to go`;
   } else title = `The Daddy Invitational ${settings.edition}`;
-  banner.innerHTML = `<h1>${esc(title)}</h1>`;
+  banner.innerHTML = liveDay
+    ? `<h1><span class="live-dot live-dot--banner" aria-hidden="true"></span>Day ${liveDay.round} · Live</h1>`
+    : `<h1>${esc(title)}</h1>`;
 }
 
 function heroStatus(pts, played, teams) {
@@ -37,7 +39,7 @@ function heroStatus(pts, played, teams) {
   return `${played} of ${TOTAL_POINTS} matches complete`;
 }
 
-function renderHero(pts, played, teams) {
+function renderHero(pts, played, teams, projected) {
   const pct = (n) => `${(n / TOTAL_POINTS) * 100}%`;
   const champion = SIDES.find((side) => pts[side] >= TO_WIN);
   const team = (side) => `
@@ -64,6 +66,12 @@ function renderHero(pts, played, teams) {
         <span class="g" style="width:${pct(pts.red)}"></span>
         <span class="e" style="width:${pct(pts.blue)}"></span>
       </div>
+      ${projected ? `
+        <div class="projected" aria-label="Projected score if every match ended now">
+          <span class="fg-red num">${formatPts(projected.red)}</span>
+          <span class="eyebrow">Projected</span>
+          <span class="fg-blue num">${formatPts(projected.blue)}</span>
+        </div>` : ''}
     </section>`;
 }
 
@@ -75,7 +83,8 @@ function matchStrokes(match, players, settings, day) {
 }
 
 function renderSide(side, names, match, info) {
-  const state = match.winner === side ? `won--${side}` : match.winner && match.winner !== 'Halved' ? 'lost' : '';
+  const state = match.winner === side ? `won--${side}` : match.winner && match.winner !== 'Halved' ? 'lost'
+    : match.status === 'live' && match.leader === side ? `lead--${side}` : '';
   const label = names.length ? names.map(esc).join('<br>') : '<span class="tba">TBD</span>';
   const hcp = info.hcp[side];
   const gets = info.receiver === side ? `<span class="gets">+${info.n} stroke${info.n === 1 ? '' : 's'}</span>` : '';
@@ -86,12 +95,21 @@ function renderSide(side, names, match, info) {
     </div>`;
 }
 
-function renderResult(m, teams) {
+/** Pill plus a "Thru N" / "Final" line; once the whole day is final, the pill alone. */
+function renderResult(m, teams, dayComplete) {
+  const final = dayComplete ? '' : '<span class="eyebrow">Final</span>';
   if (m.winner === 'Halved') {
-    return `<span class="pill pill--halved">${esc(m.result || 'Halved')}</span>`;
+    return `<span class="pill pill--halved">${esc(m.result || 'Halved')}</span>${final}`;
   }
   if (m.winner) {
-    return `<span class="eyebrow">${esc(teams[m.winner])}</span><span class="pill bg-${m.winner}">${esc(m.result || 'Won')}</span>`;
+    return `<span class="pill bg-${m.winner}" aria-label="Team ${esc(teams[m.winner])} won ${esc(m.result)}">${esc(m.result || 'Won')}</span>${final}`;
+  }
+  if (m.status === 'live') {
+    const square = m.leader === 'AS';
+    const label = square ? 'All square' : `Team ${teams[m.leader]} ${m.up} up`;
+    return `
+      <span class="pill pill--live ${square ? 'pill--square' : `fg-${m.leader}`}" aria-label="${esc(label)}">${square ? 'AS' : `${m.up} UP`}</span>
+      <span class="eyebrow"><span class="live-dot" aria-hidden="true"></span>Thru ${m.thru}</span>`;
   }
   return `<span class="eyebrow">Match ${m.number}</span><span class="pill pill--upcoming">${m.teeTime ? formatTime(m.teeTime) : 'Upcoming'}</span>`;
 }
@@ -99,15 +117,16 @@ function renderResult(m, teams) {
 function renderDay(day, players, settings, collapsible) {
   const pts = points(day.matches);
   const played = day.matches.some((m) => m.winner);
+  const complete = isDayComplete(day);
   const expected = day.formatInfo?.slots.length;
   const course = day.course
     ? day.url ? `<a href="${esc(day.url)}" target="_blank" rel="noopener">${esc(day.course)}</a>` : esc(day.course)
     : '<span class="tba">Course TBA</span>';
   const rows = day.matches.length
     ? day.matches.map((m) => `
-        <li class="match">
+        <li class="match${m.winner === 'Halved' ? ' match--halved' : ''}">
           ${renderSide('red', m.red, m, matchStrokes(m, players, settings, day))}
-          <div class="result">${renderResult(m, settings.teams)}</div>
+          <div class="result">${renderResult(m, settings.teams, complete)}</div>
           ${renderSide('blue', m.blue, m, matchStrokes(m, players, settings, day))}
         </li>`).join('')
     : `<li class="empty-row tba">Matchups TBA${expected ? ` · ${expected} matches` : ''}</li>`;
@@ -246,13 +265,16 @@ async function refresh() {
     const all = days.flatMap((d) => d.matches);
     const pts = points(all);
     const played = all.filter((m) => m.winner).length;
-    renderBanner(played, days, data.settings);
+    const liveDay = days.find((d) => isDayLive(d, data.settings.timezone)) ?? null;
+    renderBanner(played, days, data.settings, liveDay);
     const standings = playerStandings(days, data.players);
     const final = played === TOTAL_POINTS;
+    // The live day's card goes first; the rest keep their order.
+    const ordered = liveDay ? [liveDay, ...days.filter((d) => d !== liveDay)] : days;
     app.innerHTML = `
-      ${renderHero(pts, played, data.settings.teams)}
+      ${renderHero(pts, played, data.settings.teams, projectedPoints(days, liveDay))}
       ${renderMvp(data.settings, standings)}
-      <div class="rounds">${days.map((d) => renderDay(d, players, data.settings, final)).join('')}</div>
+      <div class="rounds">${ordered.map((d) => renderDay(d, players, data.settings, final)).join('')}</div>
       ${days.some(isDayComplete) ? renderStandings(standings, awards(standings, days, data.players, data.settings)) : ''}`;
   } catch (err) {
     showError(app, err);

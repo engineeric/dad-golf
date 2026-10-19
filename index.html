@@ -122,9 +122,14 @@
     .side.won--red { background: var(--won-red); box-shadow: inset 4px 0 var(--red); }
     .side.won--blue { background: var(--won-blue); box-shadow: inset -4px 0 var(--blue); }
     .side.lost .side__names { color: var(--muted); font-weight: 500; }
+    /* In progress: the leading side is tinted, without the winner's edge bar. */
+    .side.lead--red { background: var(--won-red); }
+    .side.lead--blue { background: var(--won-blue); }
+    .match--halved .side--red { box-shadow: inset 4px 0 var(--gold); }
+    .match--halved .side--blue { box-shadow: inset -4px 0 var(--gold); }
 
     .result { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 10px 6px; text-align: center; }
-    .result .eyebrow { font-size: 9px; color: var(--muted); }
+    .result .eyebrow { font-size: 9px; color: var(--muted); white-space: nowrap; }
     .pill {
       display: inline-block;
       padding: 5px 10px;
@@ -137,6 +142,24 @@
     }
     .pill--halved { background: var(--gold); color: var(--navy); }
     .pill--upcoming { background: var(--cream); color: var(--ink); font-weight: 700; }
+    /* Live scores are outlined; solid pills are final. An inset ring keeps the size identical. */
+    .pill--live { background: var(--surface); box-shadow: inset 0 0 0 2px currentColor; }
+    .pill--live.fg-red { color: var(--fg-red); }
+    .pill--live.fg-blue { color: var(--fg-blue); }
+    .pill--square { color: var(--ink); }
+    .result .live-dot { width: 6px; height: 6px; margin-right: 5px; vertical-align: 1px; }
+
+    .projected {
+      display: flex;
+      justify-content: center;
+      align-items: baseline;
+      gap: 18px;
+      padding: 10px 16px;
+      border-top: 1px solid var(--rule);
+    }
+    .projected .num { font-family: var(--serif); font-size: 24px; font-weight: 700; min-width: 2.5ch; }
+    .projected .fg-red { text-align: right; }
+    .projected .eyebrow { color: var(--ink); font-size: 11px; }
     .empty-row { padding: 22px 20px; text-align: center; }
 
     .day-card > summary { list-style: none; cursor: pointer; }
@@ -239,6 +262,9 @@
       .side { padding: 12px 10px; }
       .side__names { font-size: 14px; }
       .pill { font-size: 11px; padding: 4px 7px; }
+      .result { padding: 10px 2px; }
+      .result .eyebrow { letter-spacing: 0.08em; }
+      .result .live-dot { margin-right: 3px; }
     }
   </style>
 </head>

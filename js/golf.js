@@ -57,6 +57,36 @@ export function isDayComplete(day) {
   return day.matches.length > 0 && day.matches.length >= expected && day.matches.every((m) => m.winner);
 }
 
+/**
+ * A day is live from its first tee time (or its first posted score) until every
+ * match is final, and only on its calendar date in `timeZone`.
+ */
+export function isDayLive(day, timeZone, now = Date.now()) {
+  if (!day.date || daysUntil(day.date, timeZone, now) !== 0 || isDayComplete(day)) return false;
+  const tees = day.matches.map((m) => m.teeTime?.minutes).filter((n) => n != null);
+  const teedOff = tees.length > 0 && minutesIn(timeZone, now) >= Math.min(...tees);
+  return teedOff || day.matches.some((m) => m.status !== 'scheduled');
+}
+
+/**
+ * "If it ended now" points, shown only on the last day once every match has a
+ * score and at least half are through 9: leaders get 1, all-square ½ each.
+ */
+export function projectedPoints(days, liveDay) {
+  if (!liveDay || liveDay.round !== DAYS) return null;
+  const ms = liveDay.matches;
+  const expected = liveDay.formatInfo?.slots.length ?? 0;
+  if (!ms.length || ms.length < expected || ms.some((m) => m.status === 'scheduled')) return null;
+  if (ms.filter((m) => m.thru >= 9).length * 2 < ms.length) return null;
+  const pts = points(days.flatMap((d) => d.matches));
+  for (const m of ms) {
+    if (m.status !== 'live') continue;
+    if (m.leader === 'AS') { pts.red += 0.5; pts.blue += 0.5; }
+    else pts[m.leader] += 1;
+  }
+  return pts;
+}
+
 /** Per-player points, record and net holes, ranked by points then net. */
 export function playerStandings(days, players) {
   const rows = new Map();
@@ -275,6 +305,15 @@ export function todayIn(timeZone, now = Date.now()) {
       .formatToParts(now).map((x) => [x.type, x.value]),
   );
   return { y: +p.year, m: +p.month, d: +p.day };
+}
+
+/** Minutes since midnight in `timeZone`. */
+export function minutesIn(timeZone, now = Date.now()) {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', minute: 'numeric', hourCycle: 'h23' })
+      .formatToParts(now).map((x) => [x.type, x.value]),
+  );
+  return (+p.hour % 24) * 60 + +p.minute;
 }
 
 const dayNumber = (date) => Date.UTC(date.y, date.m - 1, date.d) / 86_400_000;
