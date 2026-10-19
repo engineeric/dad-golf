@@ -75,6 +75,10 @@ const SCENARIOS = {
   midway: { startIn: -2, played: 2 },
   live: { startIn: -2, played: 2, live: 3, startedAgo: 180 },
   final: { startIn: -3, played: 3, mvp: 'JD' },
+  // 8–8: Rikky beats Brad and Jeff halves with Jbone instead.
+  tied: { startIn: -3, played: 3, scores: { 13: ['Garrett', 1, 18], 15: ['AS', '', 18] } },
+  tiebreak: { startIn: -3, played: 3, scores: { 13: ['Garrett', 1, 18], 15: ['AS', '', 18] },
+    tiebreak: ['Garrett', "Won Sunday's back 9 by 2 holes"] },
 };
 
 const parseClock = (t) => {
@@ -114,6 +118,7 @@ export function demoTabs(name) {
   // Matchups are posted one day ahead: results for played rounds, tee sheet for the next.
   const posted = Math.min(3, s.played + 1);
   const matches = MATCHES
+    .map((m, i) => (s.scores?.[i] ? [...m.slice(0, 6), ...s.scores[i]] : m))
     .filter(([round]) => round <= posted)
     .map((m) => (m[0] <= s.played ? m : [...m.slice(0, 6), '', '', '']));
   if (s.live) {
@@ -136,8 +141,8 @@ export function demoTabs(name) {
         '4605 Clubhouse Drive\nBasehor, KS 66007', '39.1290, -94.9020', 'White', '6,040', '71', '70.2', '122', '']),
     ].join('\n'),
     Settings: [
-      csvRow(['Edition', 'Red Team', 'Blue Team', 'Lower %', 'Higher %', 'Timezone', 'Round Minutes', 'MVP', 'Handicap']),
-      csvRow(['IV', 'Garrett', 'Eric', '35.0%', '15.0%', 'America/Chicago', '300', s.mvp ?? '', handicap]),
+      csvRow(['Edition', 'Red Team', 'Blue Team', 'Lower %', 'Higher %', 'Timezone', 'Round Minutes', 'MVP', 'Handicap', 'Tiebreak Winner', 'Tiebreak Note']),
+      csvRow(['IV', 'Garrett', 'Eric', '35.0%', '15.0%', 'America/Chicago', '300', s.mvp ?? '', handicap, ...(s.tiebreak ?? ['', ''])]),
     ].join('\n'),
   };
 }

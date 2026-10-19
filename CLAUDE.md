@@ -38,6 +38,8 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 | `midway` | Two days complete, day 3 tee sheet, prizes for days 1–2 (shows "Live" once day 3's first tee time has passed) |
 | `live` | Day 3 live: finals, a halve, live leads and AS, Projected line showing |
 | `final` | All 16 matches, Team Eric wins (trophy), MVP = JD, day cards collapse |
+| `tied` | All 16 matches, 8–8, no tiebreak winner yet ("Final · Tied", rule shown) |
+| `tiebreak` | 8–8, Tiebreak Winner = Garrett with a note (trophy on red) |
 
 - Add `&hcp=index` to use handicap index; demos default to course handicaps.
 - Fixture data lives in `demo/data.js` and uses the real nicknames. The live scenarios shift that day's tee times to just before now.
@@ -72,7 +74,7 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 | Matches | Round, Tee Time, Red 1, Red 2, Blue 1, Blue 2, Leader, Up, Thru | Live score, entered on the course: Leader is a team name or AS, Up is holes up (blank for AS), Thru is holes played. Blank Thru means no score yet. The final result is derived (see Live scoring); there are no Winner/Result columns. Singles leave the "2" columns blank. Rows with the same round and tee time form one group. |
 | Schedule | Round, Format, Date, Course, Course URL, Address, Coordinates, Tees, Yardage, Par, Rating, Slope, Notes | Format is Matched, Mixed or Singles, one per day. Date is `yyyy-mm-dd`. Address may contain a line break. Coordinates is `lat, long` text (optional); it pins the course in Apple Calendar events. |
 | Prizes | Round, Hole, Prize, Winner | Hole prizes. Winner stays blank until awarded. |
-| Settings | Edition, Red Team, Blue Team, Lower %, Higher %, Timezone, Round Minutes, MVP, Handicap | **One header row and one value row**, not key/value pairs (see gotchas). Handicap is `Index` or `Course`. |
+| Settings | Edition, Red Team, Blue Team, Lower %, Higher %, Timezone, Round Minutes, MVP, Handicap, Tiebreak Winner, Tiebreak Note | **One header row and one value row**, not key/value pairs (see gotchas). Handicap is `Index` or `Course`. |
 
 **gviz gotchas:**
 - **Missing tabs:** asking for a tab that doesn't exist silently returns the *first* tab. `fetchTab(name, requiredHeaders)` treats a tab without its required headers as missing.
@@ -129,10 +131,11 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 - Before day 1: "N days to go".
 - From midnight on each day: "Day N".
 - While a day is live: "Day N · Live".
-- Once all 16 matches have results: "Final".
+- Once all 16 matches have results: "Final" ("Final · Tied" at 8–8 until a Tiebreak Winner is set).
 
 **End of tournament**
 - A team reaching 8½ gets the gold "Ryder" trophy SVG on its hero card.
+- **8–8 tie** (commissioner's rule: team net holes won on Sunday's back 9, then each previous 9). It's settled on the course, not computed. Settings `Tiebreak Winner` (a team name) and `Tiebreak Note` (free text). With all 16 final at 8–8 and no winner, the banner reads "Final · Tied" and a strip under the hero states the rule; once a winner is set, that team gets the trophy and the strip shows the note. A Tiebreak Winner is ignored unless the score is actually 8–8.
 - When all 16 matches are final, the day cards collapse into `<details>`.
 
 ## Design system

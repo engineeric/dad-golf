@@ -243,14 +243,20 @@ function normalizeSchedule(rows) {
 function normalizeSettings(rows, playerRows) {
   const r = rows?.[0] ?? {};
   const listed = [...new Set(playerRows.map((p) => p.team).filter(Boolean))];
+  const teams = { red: r.redteam || listed[0] || 'Red', blue: r.blueteam || listed[1] || 'Blue' };
   return {
     edition: r.edition || DEFAULT_SETTINGS.edition,
-    teams: { red: r.redteam || listed[0] || 'Red', blue: r.blueteam || listed[1] || 'Blue' },
+    teams,
     lowerPct: pct(r.lower ?? r.lowerpct ?? r.lowerhcp) ?? DEFAULT_SETTINGS.lowerPct,
     higherPct: pct(r.higher ?? r.higherpct ?? r.higherhcp) ?? DEFAULT_SETTINGS.higherPct,
     timezone: r.timezone || DEFAULT_SETTINGS.timezone,
     roundMinutes: num(r.roundminutes) ?? DEFAULT_SETTINGS.roundMinutes,
     mvp: r.mvp || '',
+    // An 8–8 tie is settled on the course; Tiebreak Winner is a team name, read as its side.
+    tiebreak: {
+      side: ['red', 'blue'].find((side) => key(teams[side]) === key(r.tiebreakwinner ?? '')) ?? null,
+      note: r.tiebreaknote || '',
+    },
     // "Course" plays off WHS course handicaps from each day's slope/rating/par; anything else uses index.
     handicapMode: /course/i.test(r.handicap ?? '') ? 'course' : 'index',
   };

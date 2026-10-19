@@ -56,6 +56,10 @@ function setupSheet() {
   // MVP: the commissioner's pick, left blank until decided.
   const mvpCol = ensureColumn(settings, 'MVP', log);
   settings.getRange(2, mvpCol.index).setDataValidation(fromRange(playerNames));
+  // Tiebreak: only used at 8–8. Winner is a team name; Note is free text shown on the Scoreboard.
+  const tiebreakCol = ensureColumn(settings, 'Tiebreak Winner', log);
+  settings.getRange(2, tiebreakCol.index).setDataValidation(list([red, blue])).setNumberFormat('@');
+  settings.getRange(2, ensureColumn(settings, 'Tiebreak Note', log).index).setNumberFormat('@');
 
   // ---------- Matches ----------
   const matches = createTab(ss, 'Matches', ['Round', 'Tee Time', 'Red 1', 'Red 2', 'Blue 1', 'Blue 2', 'Leader', 'Up', 'Thru'], log);

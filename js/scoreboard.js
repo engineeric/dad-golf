@@ -14,13 +14,24 @@ const banner = document.getElementById('banner');
 // Expanded <details> survive the auto-refresh re-render.
 const openPlayers = new Set();
 const openDays = new Set();
+/**
+ * Who has won: the first side to 8½, or at 8–8 with every match final, the Tiebreak Winner from Settings.
+ * A Tiebreak Winner is ignored unless the score really is tied (e.g. one left over in a copied sheet).
+ */
+function outcome(pts, played, tiebreak) {
+  const clinched = SIDES.find((side) => pts[side] >= TO_WIN);
+  if (clinched) return { champion: clinched, tied: false };
+  const tied = played === TOTAL_POINTS && pts.red === pts.blue;
+  return { champion: tied ? tiebreak.side : null, tied };
+}
+
 /** One line: days to go before day 1, "Day N" on each day ("· Live" while it's on), "Final" once every match has a result. */
-function renderBanner(played, days, settings, liveDay) {
+function renderBanner(played, days, settings, liveDay, result) {
   const tz = settings.timezone;
   const today = currentDay(days, tz);
   const first = datedDays(days)[0];
   let title;
-  if (played === TOTAL_POINTS) title = 'Final';
+  if (played === TOTAL_POINTS) title = result.tied && !result.champion ? 'Final · Tied' : 'Final';
   else if (today) title = `Day ${today.round}`;
   else if (first) {
     const n = daysUntil(first.date, tz);
@@ -31,17 +42,35 @@ function renderBanner(played, days, settings, liveDay) {
     : `<h1>${esc(title)}</h1>`;
 }
 
-function heroStatus(pts, played, teams) {
-  const clinched = SIDES.find((side) => pts[side] >= TO_WIN);
-  if (clinched) return `Team ${teams[clinched]} has clinched`;
+function heroStatus(played, teams, result) {
+  if (result.tied) return result.champion ? `Team ${teams[result.champion]} wins on the tiebreaker` : 'Tied · tiebreaker to come';
+  if (result.champion) return `Team ${teams[result.champion]} has clinched`;
   if (played === TOTAL_POINTS) return 'All matches complete';
   if (!played) return `${TOTAL_POINTS} matches · ${TOTAL_POINTS} points`;
   return `${played} of ${TOTAL_POINTS} matches complete`;
 }
 
-function renderHero(pts, played, teams, projected) {
+/** At 8–8: the rule while it's being played off, then the winner and the commissioner's note. */
+function renderTiebreak(result, tiebreak, teams) {
+  if (!result.tied) return '';
+  const text = result.champion
+    ? tiebreak.note || 'Settled on the tiebreaker'
+    : "Team net holes won on Sunday's back 9, then each previous 9 until there's a winner";
+  return `
+    <div class="tiebreak">
+      <span class="tiebreak__icon">${ICONS.flag}</span>
+      <div class="tiebreak__body">
+        <span class="eyebrow">Tiebreaker</span>
+        <span>${esc(text)}</span>
+      </div>
+      ${result.champion ? `<span class="pill bg-${result.champion}">Team ${esc(teams[result.champion])}</span>` : ''}
+    </div>`;
+}
+
+function renderHero(pts, played, settings, projected, result) {
+  const { teams } = settings;
   const pct = (n) => `${(n / TOTAL_POINTS) * 100}%`;
-  const champion = SIDES.find((side) => pts[side] >= TO_WIN);
+  const { champion } = result;
   const team = (side) => `
     <div class="hero__team hero__team--${side} bg-${side}">
       ${side === champion ? `<span class="hero__trophy" role="img" aria-label="Cup winner">${ICONS.trophy}</span>` : ''}
@@ -58,7 +87,7 @@ function renderHero(pts, played, teams, projected) {
         <div class="hero__mid">
           <span class="eyebrow">Points to win</span>
           <strong>${formatPts(TO_WIN)}</strong>
-          <span class="hero__status">${esc(heroStatus(pts, played, teams))}</span>
+          <span class="hero__status">${esc(heroStatus(played, teams, result))}</span>
         </div>
         ${team('blue')}
       </div>
@@ -72,6 +101,7 @@ function renderHero(pts, played, teams, projected) {
           <span class="eyebrow">Projected</span>
           <span class="fg-blue num">${formatPts(projected.blue)}</span>
         </div>` : ''}
+      ${renderTiebreak(result, settings.tiebreak, teams)}
     </section>`;
 }
 
@@ -271,13 +301,14 @@ async function refresh() {
     const pts = points(all);
     const played = all.filter((m) => m.winner).length;
     const liveDay = days.find((d) => isDayLive(d, data.settings.timezone)) ?? null;
-    renderBanner(played, days, data.settings, liveDay);
+    const result = outcome(pts, played, data.settings.tiebreak);
+    renderBanner(played, days, data.settings, liveDay, result);
     const standings = playerStandings(days, data.players);
     const final = played === TOTAL_POINTS;
     // The live day's card goes first; the rest keep their order.
     const ordered = liveDay ? [liveDay, ...days.filter((d) => d !== liveDay)] : days;
     app.innerHTML = `
-      ${renderHero(pts, played, data.settings.teams, projectedPoints(days, liveDay))}
+      ${renderHero(pts, played, data.settings, projectedPoints(days, liveDay), result)}
       ${renderMvp(data.settings, standings)}
       <div class="rounds">${ordered.map((d) => renderDay(d, players, data.settings, final)).join('')}</div>
       ${days.some(isDayComplete) ? renderStandings(standings, awards(standings, days, data.players, data.settings)) : ''}`;
