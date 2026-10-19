@@ -122,6 +122,7 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 - **Biggest win:** the widest winning margin.
 - **Toughest loss:** the other side of the Biggest win match.
 - **Stroke killer:** won while *giving* the most strokes. If nobody did, the card becomes **Against the odds**, the win that *received* the most strokes.
+- **Display:** award names are always ink, never team colours. Tied entries each get their own line.
 - **Tournament MVP:** the commissioner's pick from Settings `MVP`. It's shown as its own card only when set; it isn't highlighted in the table.
 
 **Scoreboard banner** (one line, always navy; by calendar day in the Settings timezone, not tee times)
@@ -145,7 +146,7 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 - **Alignment details** that were deliberately tuned (don't regress them):
   - Tee-sheet player chips have equal widths, and "VS" is optically centred: its padding offsets the trailing letter-spacing, and a singles card sits next to "VS".
   - Day scores sit in fixed-width columns.
-  - Scoreboard 2v2 pairs sit on one line as "JD / Eric" (muted slash). If any pair is too wide, `fitPairs()` stacks every pair, so rows never mix. It re-checks on resize and when a day card opens.
+  - Scoreboard 2v2 pairs (match rows and award cards) sit on one line as "JD / Eric" with a muted slash. If any pair in a group is too wide, `fitPairs()` stacks every pair in that group, so the group never mixes. Match rows and award cards are separate groups. It re-checks on resize and when a day card opens.
 - **Icons:** the trophy is a custom single-tone SVG chosen from mockups, not a stock icon.
 - **Loading states:** the Scoreboard shows a pulsing skeleton (banner bar, red/navy/blue hero, day cards) in static HTML; the other pages show the "team chase" crest loader (red and blue quarter arcs circling the edition crest, `.loader` in `theme.css`). Both stop animating under `prefers-reduced-motion`.
 - **Copy:** sentence-case UI text and short labels.

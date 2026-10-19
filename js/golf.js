@@ -177,18 +177,17 @@ export function sideHandicap(names, byName, settings, day) {
   return hcps.length === 1 ? hcps[0] : teamHcp(hcps[0], hcps[1], settings);
 }
 
-/** Stat awards; each is { names, side, label } or null. */
+/** Stat awards; each is { entries, label } or null. An entry is one player or a 2v2 pair (an array of names); ties give several. */
 export function awards(standings, days, players, settings) {
   const played = days.flatMap((d) => d.matches.map((m) => ({ ...m, round: d.round, day: d }))).filter((m) => m.winner);
   const decided = played.filter((m) => m.winner !== 'Halved');
   const byName = new Map(players.map((p) => [p.name, p]));
-  const joinSides = (ms, pick) => ms.map((m) => pick(m).join(' + ')).join(' / ');
+  const solo = (rows) => rows.map((r) => [r.name]);
 
   const top = standings[0];
   const leaders = top && played.length ? standings.filter((r) => r.rank === 1) : [];
   const pointsLeader = leaders.length ? {
-    names: leaders.map((r) => r.name).join(' / '),
-    side: leaders.every((r) => r.side === top.side) ? top.side : null,
+    entries: solo(leaders),
     label: `${formatPts(top.points)} pts · ${top.net > 0 ? '+' : ''}${top.net}`,
   } : null;
 
@@ -196,13 +195,11 @@ export function awards(standings, days, players, settings) {
   const widest = Math.max(0, ...margins.map((x) => x.margin));
   const widestMatches = margins.filter((x) => x.margin === widest).map((x) => x.m);
   const biggestWin = widest ? {
-    names: joinSides(widestMatches, (m) => m[m.winner]),
-    side: widestMatches[0].winner,
+    entries: widestMatches.map((m) => m[m.winner]),
     label: `${widestMatches[0].result} · Day ${widestMatches[0].round}`,
   } : null;
   const toughestLoss = widest ? {
-    names: joinSides(widestMatches, (m) => m[other(m.winner)]),
-    side: other(widestMatches[0].winner),
+    entries: widestMatches.map((m) => m[other(m.winner)]),
     label: `Lost ${loserResult(widestMatches[0].result)}`,
   } : null;
 
@@ -216,7 +213,7 @@ export function awards(standings, days, players, settings) {
     const best = Math.max(0, ...spreads.map((x) => pick(x.spread)));
     if (!best) return null;
     const ms = spreads.filter((x) => pick(x.spread) === best).map((x) => x.m);
-    return { title, names: joinSides(ms, (m) => m[m.winner]), side: ms[0].winner, label: label(best) };
+    return { title, entries: ms.map((m) => m[m.winner]), label: label(best) };
   };
   const plural = (n) => `${n} stroke${n === 1 ? '' : 's'}`;
   // Stroke killer: won while giving the most strokes. Fallback: biggest underdog win.
@@ -228,8 +225,7 @@ export function awards(standings, days, players, settings) {
   const maxWins = Math.max(0, ...perfect.map((r) => r.w));
   const unbeaten = perfect.filter((r) => r.w === maxWins);
   const lockedIn = unbeaten.length ? {
-    names: unbeaten.map((r) => r.name).join(' / '),
-    side: unbeaten.every((r) => r.side === unbeaten[0].side) ? unbeaten[0].side : null,
+    entries: solo(unbeaten),
     label: `Perfect ${maxWins}-0-0`,
   } : null;
 

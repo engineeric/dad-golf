@@ -106,12 +106,13 @@
     .match:first-child { border-top: 0; }
     .side { padding: 14px 20px; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
     .side--blue { text-align: right; }
-    .side__names { font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; }
-    .side__names .sep { color: var(--muted); font-weight: 400; padding: 0 0.2em; }
-    /* Set by fitPairs() when any pair is too wide for one line. */
-    .stack-pairs .side__names { white-space: normal; }
-    .stack-pairs .side__names .sep { display: none; }
-    .stack-pairs .side__names .nm { display: block; }
+    .side__names { font-size: 17px; font-weight: 600; }
+    .pair { white-space: nowrap; overflow: hidden; }
+    .pair .sep { color: var(--muted); font-weight: 400; padding: 0 0.2em; }
+    /* Set by fitPairs() when any pair in the group is too wide for one line. */
+    .stack-pairs .pair { white-space: normal; }
+    .stack-pairs .pair .sep { display: none; }
+    .stack-pairs .pair .nm { display: block; }
     .side__hcp { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
     /* The stroke pill sits inside the handicap; wrap-reverse keeps the handicap on top when it wraps. */
     .side--blue .side__hcp { justify-content: flex-end; flex-wrap: wrap-reverse; }
@@ -187,6 +188,9 @@
     .award { padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; }
     .award .eyebrow { color: var(--muted); font-size: 10px; }
     .award strong { font-family: var(--serif); font-size: 20px; line-height: 1.25; margin-top: 4px; }
+    /* Each tied entry gets its own line. */
+    .award .pair { display: block; }
+    .award .pair + .pair { margin-top: 4px; }
     .award .muted { font-size: 13px; }
 
     .lb__title { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 16px 20px; border-bottom: 2px solid var(--rule-strong); }

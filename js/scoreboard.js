@@ -82,17 +82,20 @@ function matchStrokes(match, players, settings, day) {
   return { hcp, n, receiver: n ? (hcp.red > hcp.blue ? 'red' : 'blue') : null };
 }
 
+/** "JD / Eric" on one line; `.stack-pairs` on a container stacks them (see fitPairs). */
+function pairLabel(names) {
+  return names.map((n) => `<span class="nm">${esc(n)}</span>`).join('<span class="sep">/</span>');
+}
+
 function renderSide(side, names, match, info) {
   const state = match.winner === side ? `won--${side}` : match.winner && match.winner !== 'Halved' ? 'lost'
     : match.status === 'live' && match.leader === side ? `lead--${side}` : '';
-  const label = names.length
-    ? names.map((n) => `<span class="nm">${esc(n)}</span>`).join('<span class="sep">/</span>')
-    : '<span class="tba">TBD</span>';
+  const label = names.length ? pairLabel(names) : '<span class="tba">TBD</span>';
   const hcp = info.hcp[side];
   const gets = info.receiver === side ? `<span class="gets">+${info.n} stroke${info.n === 1 ? '' : 's'}</span>` : '';
   return `
     <div class="side side--${side} ${state}">
-      <span class="side__names">${label}</span>
+      <span class="side__names pair">${label}</span>
       ${hcp != null ? `<span class="side__hcp num">${side === 'blue' ? gets : ''}${names.length > 1 ? `Team HCP ${formatHcp(hcp)}` : `HCP ${formatPlaying(hcp)}`}${side === 'red' ? gets : ''}</span>` : ''}
     </div>`;
 }
@@ -199,7 +202,7 @@ function renderAward(title, award) {
   return `
     <div class="card award">
       <span class="eyebrow">${esc(award.title ?? title)}</span>
-      <strong${award.side ? ` class="fg-${award.side}"` : ''}>${esc(award.names)}</strong>
+      <strong>${award.entries.map((e) => `<span class="pair">${pairLabel(e)}</span>`).join('')}</strong>
       <span class="muted">${esc(award.label)}</span>
     </div>`;
 }
@@ -284,11 +287,16 @@ async function refresh() {
   }
 }
 
-/** Pairs sit on one line ("JD / Eric") unless any row is too narrow; then every row stacks, so rows never mix. */
+/**
+ * Pairs sit on one line ("JD / Eric") unless one is too narrow; then every pair in that group stacks,
+ * so match rows never mix, and award cards never mix. The two groups are judged separately.
+ */
 function fitPairs() {
-  app.classList.remove('stack-pairs');
-  const tight = [...app.querySelectorAll('.side__names')].some((el) => el.clientWidth && el.scrollWidth > el.clientWidth);
-  app.classList.toggle('stack-pairs', tight);
+  for (const group of app.querySelectorAll('.rounds, .awards')) {
+    group.classList.remove('stack-pairs');
+    const tight = [...group.querySelectorAll('.pair')].some((el) => el.clientWidth && el.scrollWidth > el.clientWidth);
+    group.classList.toggle('stack-pairs', tight);
+  }
 }
 
 // toggle doesn't bubble, so listen in the capture phase.
