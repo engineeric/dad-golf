@@ -58,7 +58,7 @@ function setupSheet() {
   settings.getRange(2, mvpCol.index).setDataValidation(fromRange(playerNames));
 
   // ---------- Matches ----------
-  const matches = createTab(ss, 'Matches', ['Round', 'Tee Time', 'Red 1', 'Red 2', 'Blue 1', 'Blue 2', 'Winner', 'Result'], log);
+  const matches = createTab(ss, 'Matches', ['Round', 'Tee Time', 'Red 1', 'Red 2', 'Blue 1', 'Blue 2', 'Leader', 'Up', 'Thru'], log);
   // Legacy headers named after teams ("Garrett 1") become "Red 1" / "Blue 1".
   renameHeaders(matches, { [red + ' 1']: 'Red 1', [red + ' 2']: 'Red 2', [blue + ' 1']: 'Blue 1', [blue + ' 2']: 'Blue 2' }, log);
   const rows = 40;
@@ -66,17 +66,25 @@ function setupSheet() {
   matches.getRange(2, col('Round'), rows).setDataValidation(list(['1', '2', '3'])).setHorizontalAlignment('center');
   matches.getRange(2, col('Tee Time'), rows).setNumberFormat('h:mm AM/PM');
   ['Red 1', 'Red 2', 'Blue 1', 'Blue 2'].forEach((h) => matches.getRange(2, col(h), rows).setDataValidation(fromRange(playerNames)));
-  matches.getRange(2, col('Winner'), rows).setDataValidation(list([red, blue, 'Halved']));
-  // Warn (don't block) on results the site can't read a margin from: 3&2, 2 UP, Halved, AS.
-  const resultCol = col('Result');
-  const resultCell = matches.getRange(2, resultCol).getA1Notation();
-  const resultRule = SpreadsheetApp.newDataValidation()
-    .requireFormulaSatisfied('=OR(' + resultCell + '="", REGEXMATCH(TO_TEXT(' + resultCell + '), "(?i)^\\s*(\\d+\\s*&\\s*\\d+|\\d+\\s*UP|HALVED?|AS|ALL SQUARE)\\s*$"))')
+  // Live score: who's up (or AS), by how many, through how many holes. The site
+  // derives the final result (4&3, 2 UP, Halved) once the match can't be caught.
+  matches.getRange(2, col('Leader'), rows).setDataValidation(list([red, blue, 'AS']));
+  const holes = (max) => SpreadsheetApp.newDataValidation().requireNumberBetween(0, max).setAllowInvalid(false).build();
+  const thruCol = col('Thru');
+  const upCol = col('Up');
+  matches.getRange(2, thruCol, rows).setNumberFormat('0').setHorizontalAlignment('center').setDataValidation(holes(18));
+  // Warn (don't block) on a lead the match would already have ended before: more than one past the holes left.
+  const upCell = matches.getRange(2, upCol).getA1Notation();
+  const thruCell = matches.getRange(2, thruCol).getA1Notation();
+  const upRule = SpreadsheetApp.newDataValidation()
+    .requireFormulaSatisfied('=OR(' + upCell + '="", AND(ISNUMBER(' + upCell + '), ' + upCell + '>=0, ' + upCell + '<=19-N(' + thruCell + ')))')
     .setAllowInvalid(true)
-    .setHelpText('Use match-play results like 3&2, 2 UP, or Halved so the site can compute margins.')
+    .setHelpText('Holes up. Leave blank for AS. The match ends once Up is more than the holes left.')
     .build();
-  matches.getRange(2, resultCol, rows).setNumberFormat('@').setDataValidation(resultRule);
-  log.push('Matches: Result validation (warning only) applied');
+  matches.getRange(2, upCol, rows).setNumberFormat('0').setHorizontalAlignment('center').setDataValidation(upRule);
+  if (headers(matches).some((h) => h === 'Winner' || h === 'Result')) {
+    log.push('Matches: Winner and Result are no longer used; delete those columns by hand');
+  }
 
   // ---------- Schedule ----------
   const schedule = createTab(ss, 'Schedule',

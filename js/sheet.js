@@ -87,7 +87,7 @@ const pct = (v) => {
   return String(v).includes('%') || n > 1 ? n / 100 : n;
 };
 
-const HALVED = new Set(['halved', 'halve', 'tie', 'tied', 'as']);
+const HALVED = new Set(['halved', 'halve', 'tie', 'tied', 'as', 'allsquare']);
 const truthy = (v) => /^(true|yes|y|x|1|✓|✔)$/i.test(String(v).trim());
 
 /** Maps a team name (or "Red"/"Blue") to its side. */
@@ -164,6 +164,33 @@ function normalizePlayers(rows, teams) {
   return { players: players.map(({ fullName, ...p }) => p), aliases };
 }
 
+const HOLES = 18;
+const wholeHoles = (v) => {
+  const n = num(v);
+  return n != null && Number.isInteger(n) && n >= 0 && n <= HOLES ? n : null;
+};
+
+/**
+ * Score from Leader (a team name or AS), Up and Thru. A match is final once the
+ * leader is up by more than the holes left, or after 18; its result ("4&3",
+ * "2 UP", "Halved") is derived from that. Rows without a score are scheduled.
+ */
+function matchState(r, teams) {
+  const thru = wholeHoles(r.thru);
+  const square = HALVED.has(key(r.leader ?? ''));
+  const side = square ? null : sideOf(r.leader ?? '', teams);
+  const up = square ? 0 : wholeHoles(r.up);
+  const none = { status: 'scheduled', leader: null, up: null, thru: null, winner: null, result: '' };
+  if (!thru || (!square && !(side && up != null))) return none;
+  const leader = up === 0 ? 'AS' : side;
+  const left = HOLES - thru;
+  if (leader !== 'AS' && up > left) {
+    return { status: 'final', leader, up, thru, winner: leader, result: left ? `${up}&${left}` : `${up} UP` };
+  }
+  if (!left) return { status: 'final', leader, up, thru, winner: 'Halved', result: 'Halved' };
+  return { status: 'live', leader, up, thru, winner: null, result: '' };
+}
+
 function normalizeMatches(rows, teams, aliases) {
   const display = (n) => aliases.get(key(n)) ?? n;
   return (rows ?? [])
@@ -175,8 +202,7 @@ function normalizeMatches(rows, teams, aliases) {
         teeTime: time,
         red: [r.red1, r.red2].filter(Boolean).map(display),
         blue: [r.blue1, r.blue2].filter(Boolean).map(display),
-        winner: HALVED.has(key(r.winner)) ? 'Halved' : sideOf(r.winner, teams),
-        result: r.result || '',
+        ...matchState(r, teams),
       };
     })
     .filter((m) => m.round != null);
@@ -246,7 +272,7 @@ function normalizePrizes(rows, aliases) {
 export async function loadData() {
   const [players, matches, schedule, settings, prizes] = await Promise.all([
     fetchTab('Players', ['team', 'flight']),
-    fetchTab('Matches', ['round', 'red1', 'blue1', 'winner']),
+    fetchTab('Matches', ['round', 'red1', 'blue1']),
     fetchTab('Schedule', ['round', 'format', 'course']),
     fetchTab('Settings', ['timezone']),
     fetchTab('Prizes', ['round', 'hole', 'prize']),

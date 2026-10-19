@@ -33,12 +33,14 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 | Scenario | State |
 |---|---|
 | `countdown` | Tee sheets posted, round 1 in 10 days ("10 days to go") |
+| `teeoff` | Day 1 live: two matches with scores, two still showing tee times |
 | `day1` | Day 1 complete (standings and awards appear), day 2 tee sheet |
-| `midway` | Two days complete, day 3 tee sheet, prizes for days 1–2 |
+| `midway` | Two days complete, day 3 tee sheet, prizes for days 1–2 (shows "Live" once day 3's first tee time has passed) |
+| `live` | Day 3 live: finals, a halve, live leads and AS, Projected line showing |
 | `final` | All 16 matches, Team Eric wins (trophy), MVP = JD, day cards collapse |
 
 - Add `&hcp=index` to use handicap index; demos default to course handicaps.
-- Fixture data lives in `demo/data.js` and uses the real nicknames.
+- Fixture data lives in `demo/data.js` and uses the real nicknames. The live scenarios shift that day's tee times to just before now.
 - `withDemo()` in `js/ui.js` carries the query string across nav links.
 - For one-off fixtures, temporary `_stub.js` + `_test-*.html` files that override `window.fetch` also work. Delete them before committing.
 
@@ -67,7 +69,7 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 | Tab | Columns | Notes |
 |---|---|---|
 | Players | Nickname, Handicap Index, Team, Flight, Captain | Flight is A or B. Captain is a checkbox. |
-| Matches | Round, Tee Time, Red 1, Red 2, Blue 1, Blue 2, Winner, Result | Winner is a team name or Halved; blank means not played. Result is like `3&2`, `2 UP` or `Halved`. Singles leave the "2" columns blank. Rows with the same round and tee time form one group. |
+| Matches | Round, Tee Time, Red 1, Red 2, Blue 1, Blue 2, Leader, Up, Thru | Live score, entered on the course: Leader is a team name or AS, Up is holes up (blank for AS), Thru is holes played. Blank Thru means no score yet. The final result is derived (see Live scoring); there are no Winner/Result columns. Singles leave the "2" columns blank. Rows with the same round and tee time form one group. |
 | Schedule | Round, Format, Date, Course, Course URL, Address, Coordinates, Tees, Yardage, Par, Rating, Slope, Notes | Format is Matched, Mixed or Singles, one per day. Date is `yyyy-mm-dd`. Address may contain a line break. Coordinates is `lat, long` text (optional); it pins the course in Apple Calendar events. |
 | Prizes | Round, Hole, Prize, Winner | Hole prizes. Winner stays blank until awarded. |
 | Settings | Edition, Red Team, Blue Team, Lower %, Higher %, Timezone, Round Minutes, MVP, Handicap | **One header row and one value row**, not key/value pairs (see gotchas). Handicap is `Index` or `Course`. |
@@ -92,6 +94,13 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 - **The Matches tab is the official, locked-in matchups.** Whatever is posted there for a day is copied into that format's preview, tagged "Official" and not editable; only unposted matches can be previewed. Locking is per side: a row with only one team's players posted locks that side and leaves the other editable (the "Official" tag appears once both sides are posted).
 - **Day for each format:** set by the Schedule `Format` column, not fixed in code. Matchups finds the course for a format by matching the day's Format. The Matchups format buttons are ordered by that schedule and open on the first format played.
 
+**Live scoring**
+- **Final is derived** in `matchState()` (`js/sheet.js`): final when Up > 18 − Thru (`4&3`), or at Thru 18 (`2 UP`, or AS = `Halved`). Otherwise a row with Thru ≥ 1 and a Leader is live. Fixing a typo in Thru/Up reverts it; nothing is stored.
+- **Live day** (`isDayLive`): on its calendar date, from the first tee time (or first posted score) until every match is final. The banner reads "Day N · Live" with a pulsing dot and that day's card moves to the top.
+- **Rows:** no score shows the tee time. Live shows an outlined pill in the leader's colour (AS has a gold ring like Halved, with gold text in dark mode) over "• Thru N", and the leading side is tinted without an edge bar. Final shows the solid pill over "Final", with the winner's tint and edge bar (halves get gold bars on both sides). Once a day is complete, "Final" is dropped and only the pill remains.
+- **Projected** (`projectedPoints`): a line under the hero, only on the last day, once every match has a score and at least half are through 9. Leaders get 1, AS ½ each, added to official points. It hides again if a correction breaks a condition.
+- **Refresh:** the Scoreboard re-fetches every 60s while visible. gviz can lag a minute or two behind sheet edits.
+
 **Handicaps**
 - **2v2 team handicap:** `lowerPct × lower + higherPct × higher` (35% / 15%, from Settings).
 - **Strokes:** `Math.round(|a − b|)` of the side handicaps.
@@ -104,7 +113,7 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 
 **Margins and standings**
 - **Margin parsing** (`parseMargin`): `4&3` → 4, `2 UP` → 2, `Halved`/`AS` → 0. Anything unrecognised is null; it still counts for points but is excluded from Net.
-- **When standings appear:** only once a day is complete, meaning every expected match has a Winner.
+- **When standings appear:** only once a day is complete, meaning every expected match is final.
 - **Ranking:** points, then Net, the sum of a player's margins. Partners share a 2v2 result.
 
 **Awards**
@@ -118,6 +127,7 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 **Scoreboard banner** (one line, always navy; by calendar day in the Settings timezone, not tee times)
 - Before day 1: "N days to go".
 - From midnight on each day: "Day N".
+- While a day is live: "Day N · Live".
 - Once all 16 matches have results: "Final".
 
 **End of tournament**
