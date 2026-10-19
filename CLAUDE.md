@@ -97,7 +97,7 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 **Live scoring**
 - **Final is derived** in `matchState()` (`js/sheet.js`): final when Up > 18 − Thru (`4&3`), or at Thru 18 (`2 UP`, or AS = `Halved`). Otherwise a row with Thru ≥ 1 and a Leader is live. Fixing a typo in Thru/Up reverts it; nothing is stored.
 - **Live day** (`isDayLive`): on its calendar date, from the first tee time (or first posted score) until every match is final. The banner reads "Day N · Live" with a pulsing dot and that day's card moves to the top.
-- **Rows:** no score shows the tee time. Live shows an outlined pill in the leader's colour (AS in ink) over "• Thru N", and the leading side is tinted without an edge bar. Final shows the solid pill over "Final", with the winner's tint and edge bar (halves get gold bars on both sides). Once a day is complete, "Final" is dropped and only the pill remains.
+- **Rows:** no score shows the tee time. Live shows an outlined pill in the leader's colour (AS has a gold ring, like Halved) over "• Thru N", and the leading side is tinted without an edge bar. Final shows the solid pill over "Final", with the winner's tint and edge bar (halves get gold bars on both sides). Once a day is complete, "Final" is dropped and only the pill remains.
 - **Projected** (`projectedPoints`): a line under the hero, only on the last day, once every match has a score and at least half are through 9. Leaders get 1, AS ½ each, added to official points. It hides again if a correction breaks a condition.
 - **Refresh:** the Scoreboard re-fetches every 60s while visible. gviz can lag a minute or two behind sheet edits.
 
