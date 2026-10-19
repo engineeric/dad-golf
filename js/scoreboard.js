@@ -85,7 +85,9 @@ function matchStrokes(match, players, settings, day) {
 function renderSide(side, names, match, info) {
   const state = match.winner === side ? `won--${side}` : match.winner && match.winner !== 'Halved' ? 'lost'
     : match.status === 'live' && match.leader === side ? `lead--${side}` : '';
-  const label = names.length ? names.map(esc).join('<br>') : '<span class="tba">TBD</span>';
+  const label = names.length
+    ? names.map((n) => `<span class="nm">${esc(n)}</span>`).join('<span class="sep">/</span>')
+    : '<span class="tba">TBD</span>';
   const hcp = info.hcp[side];
   const gets = info.receiver === side ? `<span class="gets">+${info.n} stroke${info.n === 1 ? '' : 's'}</span>` : '';
   return `
@@ -276,9 +278,17 @@ async function refresh() {
       ${renderMvp(data.settings, standings)}
       <div class="rounds">${ordered.map((d) => renderDay(d, players, data.settings, final)).join('')}</div>
       ${days.some(isDayComplete) ? renderStandings(standings, awards(standings, days, data.players, data.settings)) : ''}`;
+    fitPairs();
   } catch (err) {
     showError(app, err);
   }
+}
+
+/** Pairs sit on one line ("JD / Eric") unless any row is too narrow; then every row stacks, so rows never mix. */
+function fitPairs() {
+  app.classList.remove('stack-pairs');
+  const tight = [...app.querySelectorAll('.side__names')].some((el) => el.clientWidth && el.scrollWidth > el.clientWidth);
+  app.classList.toggle('stack-pairs', tight);
 }
 
 // toggle doesn't bubble, so listen in the capture phase.
@@ -288,7 +298,11 @@ app.addEventListener('toggle', (e) => {
     : el.dataset.day != null ? [openDays, +el.dataset.day] : [];
   if (!set) return;
   if (el.open) set.add(id); else set.delete(id);
+  // Rows in a closed card have no width (skipped by fitPairs), so check again once one opens.
+  if (el.open) fitPairs();
 }, true);
+
+addEventListener('resize', fitPairs);
 
 refresh();
 setInterval(() => { if (!document.hidden) refresh(); }, REFRESH_MS);
