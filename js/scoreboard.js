@@ -1,7 +1,7 @@
 import { loadData } from './sheet.js';
 import {
   SIDES, TOTAL_POINTS, TO_WIN, awards, buildDays, currentDay, datedDays, dayTitle, daysUntil, formatDate, formatHcp, formatPts,
-  formatTime, isDayComplete, isDayLive, loserResult, projectedPoints, formatPlaying, playerStandings, points, sideHandicap, strokes,
+  formatTime, isDayComplete, isDayLive, loserResult, matchStrokes, projectedPoints, formatPlaying, playerStandings, points, tiebreakLead,
 } from './golf.js';
 import { ICONS, applyEdition, esc, holeBadge, playerChip, renderChrome, showError, withDemo } from './ui.js';
 
@@ -50,24 +50,39 @@ function heroStatus(played, teams, result) {
   return `${played} of ${TOTAL_POINTS} matches complete`;
 }
 
-/** At 8–8: the rule while it's being played off, then the winner and the commissioner's note. */
-function renderTiebreak(result, tiebreak, teams) {
+/**
+ * At 8–8: the rule while it's being played off, then the winner and the commissioner's note.
+ * With hole results in, the computed winner shows as pending until Tiebreak Winner is set.
+ */
+function renderTiebreak(result, tiebreak, teams, lead) {
   if (!result.tied) return '';
+  const nine = lead && `${lead.day.date ? formatDate(lead.day.date, { weekday: 'long' }) : `Day ${lead.day.round}`}'s ${lead.back ? 'back' : 'front'} 9`;
+  const pending = !result.champion && lead;
   const text = result.champion
     ? tiebreak.note || 'Settled on the tiebreaker'
-    : "Team net holes won on Sunday's back 9, then each previous 9 until there's a winner";
+    : pending ? `Team ${teams[lead.side]} won ${nine} by ${lead.margin} hole${lead.margin === 1 ? '' : 's'}`
+      : "Team net holes won on Sunday's back 9, then each previous 9 until there's a winner";
+  const pill = result.champion ? `<span class="pill bg-${result.champion}">Team ${esc(teams[result.champion])}</span>`
+    : pending ? `<span class="pill pill--live fg-${lead.side}">Team ${esc(teams[lead.side])}</span>` : '';
   return `
     <div class="tiebreak">
       <span class="tiebreak__icon">${ICONS.flag}</span>
       <div class="tiebreak__body">
-        <span class="eyebrow">Tiebreaker</span>
+        <span class="eyebrow">Tiebreaker${pending ? ' · pending verification' : ''}</span>
         <span>${esc(text)}</span>
       </div>
-      ${result.champion ? `<span class="pill bg-${result.champion}">Team ${esc(teams[result.champion])}</span>` : ''}
+      ${pill}
     </div>`;
 }
 
-function renderHero(pts, played, settings, projected, result) {
+/** "Keep score" on tournament days while hole entry is on. */
+function renderKeepScore(days, settings) {
+  if (!settings.holeEntry || !settings.scoreAppUrl) return '';
+  if (!days.some((d) => d.date && daysUntil(d.date, settings.timezone) === 0)) return '';
+  return `<a class="keep-score" href="${withDemo('score.html')}">${ICONS.flag}<span>Keep score</span><span aria-hidden="true">→</span></a>`;
+}
+
+function renderHero(pts, played, settings, projected, result, lead) {
   const { teams } = settings;
   const pct = (n) => `${(n / TOTAL_POINTS) * 100}%`;
   const { champion } = result;
@@ -101,15 +116,8 @@ function renderHero(pts, played, settings, projected, result) {
           <span class="eyebrow">Projected</span>
           <span class="fg-blue num">${formatPts(projected.blue)}</span>
         </div>` : ''}
-      ${renderTiebreak(result, settings.tiebreak, teams)}
+      ${renderTiebreak(result, settings.tiebreak, teams, lead)}
     </section>`;
-}
-
-/** Handicaps for both sides and the strokes the higher side receives. */
-function matchStrokes(match, players, settings, day) {
-  const hcp = Object.fromEntries(SIDES.map((side) => [side, match[side].length ? sideHandicap(match[side], players, settings, day) : null]));
-  const n = hcp.red != null && hcp.blue != null ? strokes(hcp.red, hcp.blue) : 0;
-  return { hcp, n, receiver: n ? (hcp.red > hcp.blue ? 'red' : 'blue') : null };
 }
 
 /** "JD / Eric" on one line; `.stack-pairs` on a container stacks them (see fitPairs). */
@@ -308,7 +316,8 @@ async function refresh() {
     // The live day's card goes first; the rest keep their order.
     const ordered = liveDay ? [liveDay, ...days.filter((d) => d !== liveDay)] : days;
     app.innerHTML = `
-      ${renderHero(pts, played, data.settings, projectedPoints(days, liveDay), result)}
+      ${renderHero(pts, played, data.settings, projectedPoints(days, liveDay), result, result.tied && !result.champion ? tiebreakLead(days) : null)}
+      ${renderKeepScore(days, data.settings)}
       ${renderMvp(data.settings, standings)}
       <div class="rounds">${ordered.map((d) => renderDay(d, players, data.settings, final)).join('')}</div>
       ${days.some(isDayComplete) ? renderStandings(standings, awards(standings, days, data.players, data.settings)) : ''}`;
