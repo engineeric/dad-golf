@@ -25,9 +25,10 @@ export function withDemo(href) {
   return `${path}${location.search}${hash ? `#${hash}` : ''}`;
 }
 
-export function renderChrome(pageId) {
+/** Header and footer. Pages outside the nav (e.g. score.html) pass a label and can hide the nav. */
+export function renderChrome(pageId, { label, nav = true } = {}) {
   const edition = cachedEdition();
-  const page = PAGES.find((p) => p.id === pageId);
+  const page = PAGES.find((p) => p.id === pageId) ?? { label };
   document.querySelector('.site-header').innerHTML = `
     <div class="site-header__inner">
       <a class="brand" href="${withDemo('index.html')}">
@@ -37,9 +38,9 @@ export function renderChrome(pageId) {
           <span class="brand__sub eyebrow">${esc(page.label)}</span>
         </span>
       </a>
-      <nav class="nav" aria-label="Site">
+      ${nav ? `<nav class="nav" aria-label="Site">
         ${PAGES.map((p) => `<a class="eyebrow" href="${withDemo(p.href)}"${p.id === pageId ? ' aria-current="page"' : ''}>${p.label}</a>`).join('')}
-      </nav>
+      </nav>` : ''}
     </div>
     ${DEMO ? `<div class="demo-bar eyebrow">Demo data · ${esc(DEMO)} · <a href="${location.pathname}">Exit demo</a></div>` : ''}`;
   document.querySelectorAll('.loader__mark').forEach((el) => { el.textContent = edition; });
