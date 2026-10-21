@@ -298,7 +298,8 @@ function scoreEmail(nickname, url, edition) {
     'This link signs your phone in for all three days:\n\n' + url + '\n\nThings to know\n' +
     SCORE_TIPS.map((t) => '- ' + t.replace(/<[^>]+>/g, '')).join('\n') +
     '\n\nThis link is just for you: anyone with it can enter scores as you.\n\ndaddyinvitational.com';
-  return { subject: 'Your link to keep score · The Daddy Invitational ' + edition, html: html, text: text };
+  // The sender name already says The Daddy Invitational.
+  return { subject: 'Your link to keep score', html: html, text: text };
 }
 
 /** Sends the scoring link to every admin in the private sheet, and logs which route it took. Run from the editor to test email. */
