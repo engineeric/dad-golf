@@ -79,7 +79,7 @@ function renderTiebreak(result, tiebreak, teams, lead) {
 function renderKeepScore(days, settings) {
   if (!settings.holeEntry || !settings.scoreAppUrl) return '';
   if (!days.some((d) => d.date && daysUntil(d.date, settings.timezone) === 0)) return '';
-  return `<a class="keep-score" href="${withDemo('score.html')}">${ICONS.flag}<span>Keep score</span><span aria-hidden="true">→</span></a>`;
+  return `<a class="keep-score" href="${withDemo('score.html')}">${ICONS.pencil}<span>Keep score</span><span aria-hidden="true">→</span></a>`;
 }
 
 function renderHero(pts, played, settings, projected, result, lead) {

@@ -80,6 +80,7 @@ function demoApi(body) {
   if (!name) return { error: 'This link is no longer valid. Request a new one.', code: 'badkey' };
   if (body.action === 'me') return { name, admin: name === 'Eric', holeEntry: true };
   const today = todayDay()?.round;
+  const locked = today != null && dayLocked(state.days.find((d) => d.round === today));
   const saved = [];
   const rejected = [];
   const all = JSON.parse(localStorage.getItem(`demo.scores.${DEMO}`) || '[]');
@@ -88,6 +89,7 @@ function demoApi(body) {
     const id = entryId(e);
     const m = findMatch(e.round, e.match);
     if (name !== 'Eric' && (e.round !== today || ![...m.red, ...m.blue].includes(name))) { rejected.push({ id, why: 'not your match' }); continue; }
+    if (name !== 'Eric' && locked) { rejected.push({ id, why: 'locked' }); continue; }
     all.push({ ...e, result: e.result === 'halved' ? 'Halved' : teams[e.result] ?? '', by: name });
     saved.push(id);
   }
@@ -170,6 +172,9 @@ function holesFor(round, match) {
   }
   return best;
 }
+
+/** A day locks for players once every match has a result on all 18 holes (the web app enforces it too). */
+const dayLocked = (day) => day.matches.length > 0 && day.matches.every((m) => holesFor(day.round, m.number).every((h) => h.result));
 
 /** Drops sent entries once the sheet shows them (or after the grace period). */
 function pruneSent() {
@@ -257,6 +262,7 @@ function scorecard(nine, holes, strokesFor, receiver, card, labels, sel) {
 
 const WHY = {
   'not today': 'Scores for that day are closed.',
+  locked: 'Every match is in, so the day is locked. Ask Eric to fix anything.',
   'not your match': 'You can only enter scores for your own match.',
   'no match': "That match isn't in the sheet.",
   invalid: "That entry wasn't valid.",
@@ -321,6 +327,9 @@ function render() {
   const closedNote = missing >= 0
     ? `<div class="note">Match final. Keep entering holes ${s.thru + missing + 1}–18; they count toward the tiebreak.</div>` : '';
   const overrideNote = match.override ? '<div class="note">Eric has posted this result by hand, so it overrides the holes below.</div>' : '';
+  // Players get a read-only card once the day is locked; admins can always edit.
+  const readOnly = !state.me.admin && dayLocked(day);
+  const lockedNote = readOnly ? `<div class="note">Day ${day.round} is final. Scores are locked; ask Eric to fix anything.</div>` : '';
 
   app.innerHTML = `
     <div class="score">
@@ -333,11 +342,11 @@ function render() {
           <div class="mh__side mh__side--blue">${names.blue}<span class="mh__abbr">${esc(labels.blue)}</span></div>
         </div>
       </section>
-      ${overrideNote}${closedNote}
+      ${lockedNote || `${overrideNote}${closedNote}`}
       ${scorecard(0, holes, strokesFor, info.receiver, day.card, labels, i)}
       ${scorecard(1, holes, strokesFor, info.receiver, day.card, labels, i)}
       <div class="key">+ won · − lost · 0 halved · <i></i> stroke</div>
-      <section class="hole" aria-label="Hole ${i + 1}">
+      ${readOnly ? '' : `<section class="hole" aria-label="Hole ${i + 1}">
         <div class="hole__nav">
           <button type="button" data-go="-1"${i === 0 ? ' disabled' : ''}>‹ ${i || ''}</button>
           <div class="hole__title"><strong>Hole ${i + 1}</strong><span class="eyebrow">${day.card[i] ? `Par ${day.card[i].par ?? '—'} · Hcp ${day.card[i].si ?? '—'}` : ''}</span></div>
@@ -350,7 +359,7 @@ function render() {
           <button type="button" class="b" data-result="blue" aria-pressed="${res === 'blue'}">${names.blue}</button>
         </div>
         ${res ? '<div class="pick__hint">Tap the selected result again to clear this hole.</div>' : ''}
-      </section>
+      </section>`}
       <div class="sync"></div>
       <div class="who"><span>Signed in as ${esc(state.me.name)}${state.me.admin ? ' (admin)' : ''}</span><button type="button" id="signout">Sign out</button></div>
       <a class="who" href="${withDemo('index.html')}">‹ Scoreboard</a>
@@ -392,7 +401,7 @@ app.addEventListener('click', (e) => {
   if (!current) return;
   if (t.dataset.hole != null) state.hole = +t.dataset.hole;
   else if (t.dataset.go) state.hole = Math.min(HOLES - 1, Math.max(0, state.hole + +t.dataset.go));
-  else if (t.dataset.result) {
+  else if (t.dataset.result && (state.me.admin || !dayLocked(current.day))) {
     const { day, match } = current;
     const holes = holesFor(day.round, match.number);
     const was = holes[state.hole].result;

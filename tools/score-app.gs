@@ -59,7 +59,8 @@ const SCORE_ACTIONS = {
 
   /**
    * Saves hole results: entries [{ round, match, hole, result: 'red'|'blue'|'halved'|'', at }].
-   * Players can only enter today's round, for a match they're in; admins can enter anything.
+   * Players can only enter today's round, for a match they're in, until the day is locked
+   * (every match has all 18 holes entered); admins can enter anything.
    * Each hole keeps the entry with the newest `at`, so an older queued entry never overwrites a newer one.
    */
   post: function (req) {
@@ -84,6 +85,7 @@ const SCORE_ACTIONS = {
       const log = [];
       const saved = [];
       const rejected = [];
+      const locked = scoreDayLocked(rows, h, matches, today);
       entries.forEach((e) => {
         const round = Number(e.round);
         const match = Number(e.match);
@@ -96,6 +98,7 @@ const SCORE_ACTIONS = {
         if (!m) return rejected.push({ id: id, why: 'no match' });
         if (!player.admin) {
           if (round !== today) return rejected.push({ id: id, why: 'not today' });
+          if (locked) return rejected.push({ id: id, why: 'locked' });
           if (m.players.indexOf(player.nickname.toLowerCase()) < 0) return rejected.push({ id: id, why: 'not your match' });
         }
         let row = rows.filter((r) => Number(r[h.Round]) === round && Number(r[h.Match]) === match && Number(r[h.Hole]) === hole)[0];
@@ -122,6 +125,19 @@ const SCORE_ACTIONS = {
     }
   },
 };
+
+/** A day locks for players once every one of its matches has a result on all 18 holes. */
+function scoreDayLocked(rows, h, matches, round) {
+  const dayMatches = matches.filter((m) => m.round === round);
+  if (!dayMatches.length) return false;
+  return dayMatches.every((m) => {
+    const holes = {};
+    rows.forEach((r) => {
+      if (Number(r[h.Round]) === round && Number(r[h.Match]) === m.match && r[h.Result] !== '') holes[Number(r[h.Hole])] = true;
+    });
+    return Object.keys(holes).length === 18;
+  });
+}
 
 // ---------- Private spreadsheet (emails and keys) ----------
 

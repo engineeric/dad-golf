@@ -118,10 +118,10 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 - **Source of a match's score:** Leader/Up/Thru if Thru is filled, else hole results from Scores (`holeState` in `golf.js`), else scheduled.
 - **holeState:** final once a side leads by more than the holes left, counting only holes entered in order from 1 (a gap blocks the close). Holes after a close-out are still played and entered, for the tiebreak, and don't change the result. While live, Up counts all entered holes and Thru is the last one entered.
 - **Strokes:** the receiving side (existing `matchStrokes`) gets one on holes with stroke index ≤ N, two on ≤ N − 18 (`strokeHoles`). Players enter who won the hole, net; nobody enters gross scores.
-- **Who can enter:** any player in a match, for today's round only; admins (Admin ticked in the private sheet) any match, any day. Enforced by the web app.
+- **Who can enter:** any player in a match, for today's round only, until the day locks: once every match that day has a result on all 18 holes, players get a read-only card. Admins (Admin ticked in the private sheet) can edit any match, any day, locked or not. Enforced by the web app; clearing a hole reopens the day.
 - **Sign-in:** the player enters their email on score.html; the web app emails `score.html#k=<key>` (via Resend from no-reply@daddyinvitational.com, falling back to Eric's Gmail) only if the address is listed, and answers the same either way. The page stores the key in `localStorage` and strips it from the URL. iOS Home Screen shortcuts have separate storage, so players should use Safari.
 - **Offline:** taps save to a `localStorage` queue first and send in batches (retry every 5s, on `online` and on visibility). Each entry carries its tap time; the server keeps the newest per hole, so resends and out-of-order arrivals are safe. Tapping the selected result again clears the hole.
-- **Keep score button:** on the Scoreboard on tournament days (from midnight) while Hole Entry is On and Score App URL is set.
+- **Keep score button** (pencil icon): on the Scoreboard on tournament days (from midnight) while Hole Entry is On and Score App URL is set.
 
 **Handicaps**
 - **2v2 team handicap:** `lowerPct × lower + higherPct × higher` (35% / 15%, from Settings).
