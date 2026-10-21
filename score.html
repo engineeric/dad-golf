@@ -49,6 +49,15 @@
     .pick button[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--ink); }
     .pick__hint { text-align: center; font-size: 12px; color: var(--muted); margin-top: 10px; }
 
+    .flash { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: rgba(204, 166, 92, 0.15); border: 1px solid var(--gold); border-radius: var(--radius); padding: 9px 12px; font-size: 14px; }
+    .flash button { background: none; border: 0; color: var(--muted); font-size: 15px; cursor: pointer; padding: 2px 4px; }
+    .conf { margin-top: 12px; border: 2px solid var(--gold); border-radius: var(--radius); padding: 12px; background: rgba(204, 166, 92, 0.08); }
+    .conf p { margin: 0 0 10px; font-size: 15px; line-height: 1.5; }
+    .conf .pill { display: inline-block; font-size: 12px; font-weight: 800; padding: 2px 7px; border-radius: 3px; color: var(--white); vertical-align: 1px; }
+    .conf .pill--halved { background: var(--gold); color: var(--navy); }
+    .conf .pill--none { background: var(--cream); color: var(--ink); }
+    .conf__row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .conf__row .btn { height: 44px; }
     .note { background: rgba(204, 166, 92, 0.15); border: 1px solid var(--gold); border-radius: var(--radius); padding: 10px 12px; font-size: 14px; }
     .sync { text-align: center; font-size: 13px; color: var(--muted); }
     .sync--warn { color: var(--gold); font-weight: 700; }
