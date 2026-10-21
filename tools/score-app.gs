@@ -156,12 +156,13 @@ function setupPrivateSheet() {
     ss = SpreadsheetApp.create('Daddy Invitational – private (emails)');
     props.setProperty('PRIVATE_SHEET_ID', ss.getId());
     const sheet = ss.getSheets()[0].setName('Players');
-    sheet.getRange(1, 1, 1, 4).setValues([['Nickname', 'Email', 'Key', 'Admin']])
+    sheet.getRange(1, 1, 1, 5).setValues([['Nickname', 'Email', 'Key', 'Admin', 'Link Sent']])
       .setFontWeight('bold').setFontColor('#ffffff').setBackground('#0d1c38');
     sheet.setFrozenRows(1);
-    sheet.setColumnWidths(1, 4, 200);
+    sheet.setColumnWidths(1, 5, 200);
   }
   const sheet = ss.getSheetByName('Players');
+  scoreEnsureLinkSent(sheet);
   const have = sheet.getLastRow() >= 2 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().map((r) => String(r[0])) : [];
   const main = SpreadsheetApp.getActive().getSheetByName('Players');
   const mh = scoreHeaderIndex(main);
@@ -177,6 +178,13 @@ function setupPrivateSheet() {
   console.log('Private spreadsheet: ' + ss.getUrl() + (missing.length ? '\nAdded: ' + missing.join(', ') : ''));
 }
 
+/** Adds the Link Sent column (when sendAllLinks emailed each player) to a private sheet made before it existed. */
+function scoreEnsureLinkSent(sheet) {
+  if (String(sheet.getRange(1, 5).getValue()) === 'Link Sent') return;
+  sheet.getRange(1, 5).setValue('Link Sent').setFontWeight('bold').setFontColor('#ffffff').setBackground('#0d1c38');
+  sheet.setColumnWidth(5, 200);
+}
+
 /** Rows of the private sheet; generates a key for any row with an email but no key. */
 function scorePrivateRows() {
   const id = PropertiesService.getScriptProperties().getProperty('PRIVATE_SHEET_ID');
@@ -186,9 +194,9 @@ function scorePrivateRows() {
   const range = sheet.getRange(2, 1, sheet.getLastRow() - 1, 4);
   const values = range.getValues();
   let changed = false;
-  const rows = values.map((r) => {
+  const rows = values.map((r, i) => {
     if (r[1] && !r[2]) { r[2] = Utilities.getUuid().replace(/-/g, ''); changed = true; }
-    return { nickname: String(r[0]).trim(), email: String(r[1]).trim().toLowerCase(), key: String(r[2]).trim(), admin: r[3] === true };
+    return { nickname: String(r[0]).trim(), email: String(r[1]).trim().toLowerCase(), key: String(r[2]).trim(), admin: r[3] === true, row: i + 2 };
   });
   if (changed) range.setValues(values);
   return rows.filter((p) => p.nickname);
@@ -205,16 +213,7 @@ function scorePlayerByKey(key) {
 function scoreSendLink(player) {
   const props = PropertiesService.getScriptProperties();
   const site = props.getProperty('SITE_URL') || SCORE_SITE_URL;
-  const edition = scoreSettings().edition;
-  const url = site.replace(/\/$/, '') + '/score.html#k=' + player.key;
-  const subject = 'Your scoring link · The Daddy Invitational ' + edition;
-  const text = 'Hi ' + player.nickname + ',\n\nOpen this link on your phone to enter hole scores for your matches:\n' + url +
-    '\n\nIt works for all three days. Keep it to yourself: anyone with it can enter scores as you.';
-  const html = '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:16px;color:#121a2e;line-height:1.5">' +
-    '<p>Hi ' + scoreEsc(player.nickname) + ',</p>' +
-    '<p>Open this link on your phone to enter hole scores for your matches:</p>' +
-    '<p><a href="' + url + '" style="display:inline-block;background:#0d1c38;color:#cca65c;padding:12px 18px;border-radius:4px;text-decoration:none;font-weight:600">Open my scorecard</a></p>' +
-    '<p style="color:#5f5e5a;font-size:14px">It works for all three days. Keep it to yourself: anyone with it can enter scores as you.</p></div>';
+  const mail = scoreEmail(player.nickname, site.replace(/\/$/, '') + '/score.html#k=' + player.key, scoreSettings().edition);
 
   const apiKey = props.getProperty('RESEND_API_KEY');
   if (apiKey) {
@@ -223,7 +222,7 @@ function scoreSendLink(player) {
         method: 'post',
         contentType: 'application/json',
         headers: { Authorization: 'Bearer ' + apiKey },
-        payload: JSON.stringify({ from: props.getProperty('MAIL_FROM') || SCORE_MAIL_FROM, to: [player.email], subject: subject, html: html, text: text }),
+        payload: JSON.stringify({ from: props.getProperty('MAIL_FROM') || SCORE_MAIL_FROM, to: [player.email], subject: mail.subject, html: mail.html, text: mail.text }),
         muteHttpExceptions: true,
       });
       if (res.getResponseCode() < 300) return 'resend';
@@ -232,8 +231,74 @@ function scoreSendLink(player) {
       console.warn('Resend failed: ' + err);
     }
   }
-  MailApp.sendEmail({ to: player.email, subject: subject, body: text, htmlBody: html, name: 'The Daddy Invitational' });
+  MailApp.sendEmail({ to: player.email, subject: mail.subject, body: mail.text, htmlBody: mail.html, name: 'The Daddy Invitational' });
   return 'gmail';
+}
+
+const SCORE_TIPS = [
+  'Open it in your browser, not a Home Screen shortcut.',
+  'Any player in your match can enter holes, at any point in the round. Whoever has a free hand, take it; fixes are fine too.',
+  "No signal? Keep tapping. Holes send when you're back in range.",
+  'Keep a paper scorecard too, as a backup.',
+  'To get back to your card later, tap <b>Keep score</b> on the Scoreboard.',
+];
+
+/**
+ * The sign-in email, in the site's colours. Tables and inline styles because most mail apps
+ * strip stylesheets; the <style> block only adds the site's dark palette for mail apps that
+ * honour prefers-color-scheme (Apple Mail). Others darken it themselves.
+ */
+function scoreEmail(nickname, url, edition) {
+  const serif = "Georgia,'Times New Roman',serif";
+  const sans = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+  const name = scoreEsc(nickname);
+  const ed = scoreEsc(edition);
+  const href = scoreEsc(url);
+  const tips = SCORE_TIPS.map((t) =>
+    '<tr><td valign="top" style="width:18px;padding:0 0 8px;color:#cca65c;font-size:18px;line-height:22px">&bull;</td>' +
+    '<td class="dt" style="padding:0 0 8px;font-family:' + sans + ';font-size:14px;line-height:22px;color:#3a4152">' + t + '</td></tr>').join('');
+  const html =
+    '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark">' +
+    '<style>@media (prefers-color-scheme: dark){' +
+    '.dbg{background:#0a1222 !important}.dcard{background:#131e36 !important}' +
+    '.dink{color:#ebe7de !important}.dt{color:#c9ccd3 !important}.dmuted{color:#8f98ab !important}' +
+    '.drule{border-color:#26344f !important}.dbtn{background:#26395f !important}}</style></head>' +
+    '<body class="dbg" style="margin:0;padding:0;background:#f5f0e6">' +
+    '<table role="presentation" class="dbg" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0e6"><tr><td align="center" style="padding:0">' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px">' +
+    // Header: crest, title, eyebrow
+    '<tr><td align="center" style="background:#0d1c38;padding:28px 24px 22px;border-bottom:3px solid #cca65c">' +
+    '<table role="presentation" cellpadding="0" cellspacing="0"><tr><td align="center" valign="middle" width="52" height="52" ' +
+    'style="width:52px;height:52px;border:2px solid #cca65c;border-radius:50%;font-family:' + serif + ';font-weight:700;font-size:20px;color:#cca65c">' + ed + '</td></tr></table>' +
+    '<div style="font-family:' + serif + ';font-size:24px;line-height:1.2;color:#ffffff;margin-top:12px">The Daddy Invitational</div>' +
+    '<div style="font-family:' + sans + ';font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#cca65c;margin-top:6px">Keep score</div>' +
+    '</td></tr>' +
+    // Card
+    '<tr><td style="padding:24px 16px">' +
+    '<table role="presentation" class="dcard" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:4px"><tr><td style="padding:26px 24px">' +
+    '<div class="dmuted" style="font-family:' + sans + ';font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#8c919e">Hi ' + name + '</div>' +
+    '<div class="dink" style="font-family:' + serif + ';font-size:28px;line-height:1.2;color:#121a2e;margin:6px 0 12px">Keep score from your phone</div>' +
+    '<div class="dt" style="font-family:' + sans + ';font-size:16px;line-height:1.55;color:#3a4152;margin:0 0 22px">Tap who won each hole as you play, and everyone following along sees your match update live on the Scoreboard. This link signs your phone in for all three days.</div>' +
+    '<table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto 24px"><tr><td class="dbtn" align="center" style="background:#0d1c38;border-radius:3px">' +
+    '<a href="' + href + '" style="display:inline-block;padding:15px 30px;font-family:' + sans + ';font-size:13px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#cca65c;text-decoration:none">Open my scorecard</a>' +
+    '</td></tr></table>' +
+    '<div class="drule" style="border-top:1px solid #e6e3db;padding-top:16px">' +
+    '<div class="dink" style="font-family:' + serif + ';font-size:18px;color:#121a2e;margin:0 0 10px">Things to know</div>' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0">' + tips + '</table></div>' +
+    '</td></tr></table>' +
+    '<div class="dmuted" style="font-family:' + sans + ';font-size:12px;line-height:1.5;color:#8c919e;text-align:center;margin:16px 6px 0">This link is just for you: anyone with it can enter scores as you.</div>' +
+    '</td></tr>' +
+    // Footer
+    '<tr><td align="center" style="background:#0d1c38;padding:16px 24px;font-family:' + sans + ';font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#b6bccb">' +
+    'daddyinvitational.com &middot; <span style="color:#cca65c">' + ed + '</span></td></tr>' +
+    '</table></td></tr></table></body></html>';
+  const text = 'Hi ' + nickname + ',\n\nKeep score from your phone\n\n' +
+    'Tap who won each hole as you play, and everyone following along sees your match update live on the Scoreboard. ' +
+    'This link signs your phone in for all three days:\n\n' + url + '\n\nThings to know\n' +
+    SCORE_TIPS.map((t) => '- ' + t.replace(/<[^>]+>/g, '')).join('\n') +
+    '\n\nThis link is just for you: anyone with it can enter scores as you.\n\ndaddyinvitational.com';
+  return { subject: 'Your link to keep score · The Daddy Invitational ' + edition, html: html, text: text };
 }
 
 /** Sends the scoring link to every admin in the private sheet, and logs which route it took. Run from the editor to test email. */
@@ -241,6 +306,46 @@ function sendTestLink() {
   const admins = scorePrivateRows().filter((p) => p.admin && p.email);
   if (!admins.length) throw new Error('Tick Admin next to your row (with your email) in the private spreadsheet first.');
   admins.forEach((p) => console.log('Sent to ' + p.email + ' via ' + scoreSendLink(p)));
+}
+
+/**
+ * Emails every player with an address their link, skipping anyone already sent (Link Sent
+ * filled; clear it to resend). Run by the trigger from scheduleLinks, or by hand.
+ */
+function sendAllLinks() {
+  const id = PropertiesService.getScriptProperties().getProperty('PRIVATE_SHEET_ID');
+  const sheet = SpreadsheetApp.openById(id).getSheetByName('Players');
+  scoreEnsureLinkSent(sheet);
+  const sent = [];
+  scorePrivateRows().forEach((p) => {
+    if (!p.email || sheet.getRange(p.row, 5).getValue() !== '') return;
+    const route = scoreSendLink(p);
+    sheet.getRange(p.row, 5).setValue(new Date());
+    sent.push(p.nickname + ' (' + route + ')');
+  });
+  console.log(sent.length ? 'Sent: ' + sent.join(', ') : 'Nobody left to send to.');
+}
+
+/**
+ * Schedules sendAllLinks for 7:00 AM (tournament timezone) on day 1's Schedule date.
+ * Run once from the editor; running it again replaces the earlier schedule.
+ */
+function scheduleLinks() {
+  ScriptApp.getProjectTriggers()
+    .filter((t) => t.getHandlerFunction() === 'sendAllLinks')
+    .forEach((t) => ScriptApp.deleteTrigger(t));
+  const tz = scoreSettings().timezone;
+  const schedule = SpreadsheetApp.getActive().getSheetByName('Schedule');
+  const h = scoreHeaderIndex(schedule);
+  const row = schedule.getRange(2, 1, schedule.getLastRow() - 1, schedule.getLastColumn()).getValues()
+    .filter((r) => Number(r[h.Round]) === 1)[0];
+  if (!row) throw new Error('No round 1 in Schedule.');
+  const d = row[h.Date];
+  const day = d instanceof Date ? Utilities.formatDate(d, tz, 'yyyy-MM-dd') : String(d).trim();
+  const at = Utilities.parseDate(day + ' 07:00', tz, 'yyyy-MM-dd HH:mm');
+  if (at.getTime() < Date.now()) throw new Error('7:00 AM on ' + day + ' has already passed.');
+  ScriptApp.newTrigger('sendAllLinks').timeBased().at(at).create();
+  console.log('Links will go out at ' + Utilities.formatDate(at, tz, "EEEE MMMM d 'at' h:mm a z") + '.');
 }
 
 // ---------- Main sheet reads ----------

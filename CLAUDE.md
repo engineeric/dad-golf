@@ -65,7 +65,7 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 | `js/calendar.js` | `.ics` generation with an America/Chicago VTIMEZONE, and Google Calendar links |
 | `css/theme.css` | Design tokens, light/dark mode, shared components |
 | `tools/setup-sheet.gs` | Apps Script that sets up or migrates the sheet |
-| `tools/score-app.gs` | Apps Script web app (same project): emails sign-in links, saves hole results. Also `setupPrivateSheet` and `sendTestLink`. |
+| `tools/score-app.gs` | Apps Script web app (same project): emails sign-in links, saves hole results. Also `setupPrivateSheet`, `sendTestLink`, `sendAllLinks` and `scheduleLinks`. The email (`scoreEmail`) is table-based with inline styles, in the site's colours, with the site's dark palette for Apple Mail. |
 | `tools/serve.py` | Local server with caching disabled |
 | `CNAME` | Custom domain file, committed by GitHub. Don't delete it. |
 
@@ -90,7 +90,7 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 - **Mixed-type columns:** gviz drops minority-type values in a column that mixes numbers and text. That's why Settings is one row with typed columns.
 - **Formatted values:** dates and times arrive in their display format. `parseDate` and `parseTime` accept several formats.
 
-**Private spreadsheet** ("Daddy Invitational – private (emails)", made by `setupPrivateSheet`, shared with no one): Nickname, Email, Key, Admin. Keys are generated when blank; clearing a Key revokes that player's link. Only the web app reads it. Its ID and the optional `RESEND_API_KEY`, `MAIL_FROM` and `SITE_URL` are Script Properties, never in the repo.
+**Private spreadsheet** ("Daddy Invitational – private (emails)", made by `setupPrivateSheet`, shared with no one): Nickname, Email, Key, Admin, Link Sent. Keys are generated when blank; clearing a Key revokes that player's link. Only the web app reads it. Its ID and the optional `RESEND_API_KEY`, `MAIL_FROM` and `SITE_URL` are Script Properties, never in the repo.
 
 **Apps Script gotchas:**
 - **Inserted columns copy validation:** `insertColumnAfter` copies the left neighbour's data validation and formatting, so `ensureColumn` clears both.
@@ -119,7 +119,8 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 - **holeState:** final once a side leads by more than the holes left, counting only holes entered in order from 1 (a gap blocks the close). Holes after a close-out are still played and entered, for the tiebreak, and don't change the result. While live, Up counts all entered holes and Thru is the last one entered.
 - **Strokes:** the receiving side (existing `matchStrokes`) gets one on holes with stroke index ≤ N, two on ≤ N − 18 (`strokeHoles`). Players enter who won the hole, net; nobody enters gross scores.
 - **Who can enter:** any player in a match, for today's round only, until the day locks: once every match that day has a result on all 18 holes, players get a read-only card. Admins (Admin ticked in the private sheet) can edit any match, any day, locked or not. Enforced by the web app; clearing a hole reopens the day.
-- **Sign-in:** the player enters their email on score.html; the web app emails `score.html#k=<key>` (via Resend from no-reply@daddyinvitational.com, falling back to Eric's Gmail) only if the address is listed, and answers the same either way. The page stores the key in `localStorage` and strips it from the URL. iOS Home Screen shortcuts have separate storage, so players should use Safari.
+- **Links go out automatically** at 7:00 AM (Settings timezone) on day 1's date: `scheduleLinks` sets a one-time trigger for `sendAllLinks`, which emails everyone with an address and fills Link Sent (clear it to resend). Before day 1 the link only shows "No match today", which is why it isn't sent earlier.
+- **Sign-in:** the player enters their email on score.html (the fallback for a lost email or a new phone); the web app emails `score.html#k=<key>` (via Resend from no-reply@daddyinvitational.com, falling back to Eric's Gmail) only if the address is listed, and answers the same either way. The page stores the key in `localStorage` and strips it from the URL. iOS Home Screen shortcuts have separate storage, so players should use Safari.
 - **Offline:** taps save to a `localStorage` queue first and send in batches (retry every 5s, on `online` and on visibility). Each entry carries its tap time; the server keeps the newest per hole, so resends and out-of-order arrivals are safe. Tapping the selected result again clears the hole.
 - **Keep score button** (pencil icon): on the Scoreboard on tournament days (from midnight) while Hole Entry is On and Score App URL is set.
 
