@@ -40,10 +40,13 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 | `final` | All 16 matches, Team Eric wins (trophy), MVP = JD, day cards collapse |
 | `tied` | All 16 matches, 8–8, no tiebreak winner yet ("Final · Tied", rule shown) |
 | `tiebreak` | 8–8, Tiebreak Winner = Garrett with a note (trophy on red) |
+| `holes` | Like `live`, but every score comes from the Scores tab (Hole Entry On); Keep score button shows |
+| `tiedholes` | 8–8 with every hole entered: the computed tiebreak shows as "pending verification" |
 
 - Add `&hcp=index` to use handicap index; demos default to course handicaps.
 - Fixture data lives in `demo/data.js` and uses the real nicknames. The live scenarios shift that day's tee times to just before now.
 - `withDemo()` in `js/ui.js` carries the query string across nav links.
+- **Score page demo** (`score.html?demo=holes`): sign in with `<nickname>@anything` (e.g. `taylor@demo`); Eric is admin. Entries are saved in `localStorage` (`demo.scores.<scenario>`) and show on the demo Scoreboard. Set `localStorage['demo.offline'] = '1'` to simulate no signal.
 - For one-off fixtures, temporary `_stub.js` + `_test-*.html` files that override `window.fetch` also work. Delete them before committing.
 
 ## Files
@@ -54,12 +57,15 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 | `schedule.html` + `js/schedule.js` | Per-day course info, map embed, directions, prize holes, tee sheet, "Find me", calendar export |
 | `teams.html` + `js/teams.js` | Rosters by flight, captains, average handicap index |
 | `matchups.html` + `js/matchups.js` | Lineup preview for Matched / Mixed / Singles, with team handicaps and strokes. The default view, on every screen, is one round at a time: a format toggle, a totals card and a card per match with drop-downs. From 1100px wide, a "One round / All rounds" toggle offers an optional board of all three rounds as columns in schedule order, where players are cards (choosing a slot opens a tray of that team's players in that flight, and picking one moves on to the next empty slot). The board is kept in the URL hash as `v=all` and ignored on narrower screens. Official matchups from the Matches tab are locked in; the rest is editable. Opponents already met in another round are disabled, and the fill buttons retry until they find a lineup with no rematches. All three lineups are kept in the URL hash. |
+| `score.html` + `js/score.js` | Keep score: sign-in by emailed link, the player's match as a scorecard (+ won, − lost, 0 halved, gold stroke dots, running Up row), result buttons, offline queue. Admins get a match picker. Not in the nav; reached from the Scoreboard's Keep score button. |
+| `sw.js` | Service worker, scope `score.html` only: network first, cached copy when offline (6s timeout) |
 | `js/sheet.js` | Fetches and normalizes the sheet tabs, and handles demo mode |
 | `js/golf.js` | Pure rules: formats, handicaps, scoring, standings, awards, `buildDays` |
 | `js/ui.js` | Header/footer chrome, `esc`, chips, icons (trophy, star, flag), `applyEdition`, `withDemo` |
 | `js/calendar.js` | `.ics` generation with an America/Chicago VTIMEZONE, and Google Calendar links |
 | `css/theme.css` | Design tokens, light/dark mode, shared components |
 | `tools/setup-sheet.gs` | Apps Script that sets up or migrates the sheet |
+| `tools/score-app.gs` | Apps Script web app (same project): emails sign-in links, saves hole results. Also `setupPrivateSheet` and `sendTestLink`. |
 | `tools/serve.py` | Local server with caching disabled |
 | `CNAME` | Custom domain file, committed by GitHub. Don't delete it. |
 
@@ -71,15 +77,20 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 | Tab | Columns | Notes |
 |---|---|---|
 | Players | Nickname, Handicap Index, Team, Flight, Captain | Flight is A or B. Captain is a checkbox. |
-| Matches | Round, Tee Time, Red 1, Red 2, Blue 1, Blue 2, Leader, Up, Thru | Live score, entered on the course: Leader is a team name or AS, Up is holes up (blank for AS), Thru is holes played. Blank Thru means no score yet. The final result is derived (see Live scoring); there are no Winner/Result columns. Singles leave the "2" columns blank. Rows with the same round and tee time form one group. |
+| Matches | Round, Tee Time, Red 1, Red 2, Blue 1, Blue 2, Leader, Up, Thru, Match | Match is 1..N per round (setupSheet fills blanks in tee order) and keys the Scores tab. Leader/Up/Thru is Eric's manual score: Leader is a team name or AS, Up is holes up (blank for AS), Thru is holes played. When Thru is filled it overrides hole entries; blank means use Scores. The final result is derived (see Live scoring); there are no Winner/Result columns. Singles leave the "2" columns blank. Rows with the same round and tee time form one group. |
+| Course Holes | Round, Hole, Par, Stroke Index | 18 rows per round, from each course's official card (men's handicap row). Drives stroke dots on score.html. |
+| Scores | Round, Match, Hole, Result, Updated, By | Written by the web app: Result is a team name, Halved, or blank (cleared). Updated is ms since 1970 from the entering phone; the newest entry per hole wins. Eric corrects results here directly. Ignored while Hole Entry is Off. |
+| Updates | Time, By, Round, Match, Hole, Result | Log of every web-app entry |
 | Schedule | Round, Format, Date, Course, Course URL, Address, Coordinates, Tees, Yardage, Par, Rating, Slope, Notes | Format is Matched, Mixed or Singles, one per day. Date is `yyyy-mm-dd`. Address may contain a line break. Coordinates is `lat, long` text (optional); it pins the course in Apple Calendar events. |
 | Prizes | Round, Hole, Prize, Winner | Hole prizes. Winner stays blank until awarded. |
-| Settings | Edition, Red Team, Blue Team, Lower %, Higher %, Timezone, Round Minutes, MVP, Handicap, Tiebreak Winner, Tiebreak Note | **One header row and one value row**, not key/value pairs (see gotchas). Handicap is `Index` or `Course`. |
+| Settings | Edition, Red Team, Blue Team, Lower %, Higher %, Timezone, Round Minutes, MVP, Handicap, Tiebreak Winner, Tiebreak Note, Hole Entry, Score App URL | **One header row and one value row**, not key/value pairs (see gotchas). Handicap is `Index` or `Course`. |
 
 **gviz gotchas:**
 - **Missing tabs:** asking for a tab that doesn't exist silently returns the *first* tab. `fetchTab(name, requiredHeaders)` treats a tab without its required headers as missing.
 - **Mixed-type columns:** gviz drops minority-type values in a column that mixes numbers and text. That's why Settings is one row with typed columns.
 - **Formatted values:** dates and times arrive in their display format. `parseDate` and `parseTime` accept several formats.
+
+**Private spreadsheet** ("Daddy Invitational – private (emails)", made by `setupPrivateSheet`, shared with no one): Nickname, Email, Key, Admin. Keys are generated when blank; clearing a Key revokes that player's link. Only the web app reads it. Its ID and the optional `RESEND_API_KEY`, `MAIL_FROM` and `SITE_URL` are Script Properties, never in the repo.
 
 **Apps Script gotchas:**
 - **Inserted columns copy validation:** `insertColumnAfter` copies the left neighbour's data validation and formatting, so `ensureColumn` clears both.
@@ -102,6 +113,15 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 - **Rows:** no score shows the tee time. Live shows an outlined pill in the leader's colour (AS has a gold ring like Halved, with gold text in dark mode) over "• Thru N", and the leading side is tinted without an edge bar. Final shows the solid pill over "Final", with the winner's tint and edge bar (halves get gold bars on both sides). Once a day is complete, "Final" is dropped and only the pill remains.
 - **Projected** (`projectedPoints`): a line under the hero, only on the last day, once every match has a score and at least half are through 9. Leaders get 1, AS ½ each, added to official points. It hides again if a correction breaks a condition.
 - **Refresh:** the Scoreboard re-fetches every 60s while visible. gviz can lag a minute or two behind sheet edits.
+
+**Hole-by-hole entry** (Settings `Hole Entry = On`; Off is the kill switch: the site ignores Scores, score.html says entry is off, and the web app refuses entries)
+- **Source of a match's score:** Leader/Up/Thru if Thru is filled, else hole results from Scores (`holeState` in `golf.js`), else scheduled.
+- **holeState:** final once a side leads by more than the holes left, counting only holes entered in order from 1 (a gap blocks the close). Holes after a close-out are still played and entered, for the tiebreak, and don't change the result. While live, Up counts all entered holes and Thru is the last one entered.
+- **Strokes:** the receiving side (existing `matchStrokes`) gets one on holes with stroke index ≤ N, two on ≤ N − 18 (`strokeHoles`). Players enter who won the hole, net; nobody enters gross scores.
+- **Who can enter:** any player in a match, for today's round only; admins (Admin ticked in the private sheet) any match, any day. Enforced by the web app.
+- **Sign-in:** the player enters their email on score.html; the web app emails `score.html#k=<key>` (via Resend from no-reply@daddyinvitational.com, falling back to Eric's Gmail) only if the address is listed, and answers the same either way. The page stores the key in `localStorage` and strips it from the URL. iOS Home Screen shortcuts have separate storage, so players should use Safari.
+- **Offline:** taps save to a `localStorage` queue first and send in batches (retry every 5s, on `online` and on visibility). Each entry carries its tap time; the server keeps the newest per hole, so resends and out-of-order arrivals are safe. Tapping the selected result again clears the hole.
+- **Keep score button:** on the Scoreboard on tournament days (from midnight) while Hole Entry is On and Score App URL is set.
 
 **Handicaps**
 - **2v2 team handicap:** `lowerPct × lower + higherPct × higher` (35% / 15%, from Settings).
@@ -135,7 +155,7 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 
 **End of tournament**
 - A team reaching 8½ gets the gold "Ryder" trophy SVG on its hero card.
-- **8–8 tie** (commissioner's rule: team net holes won on Sunday's back 9, then each previous 9). It's settled on the course, not computed. Settings `Tiebreak Winner` (a team name) and `Tiebreak Note` (free text). With all 16 final at 8–8 and no winner, the banner reads "Final · Tied" and a strip under the hero states the rule; once a winner is set, that team gets the trophy and the strip shows the note. A Tiebreak Winner is ignored unless the score is actually 8–8.
+- **8–8 tie** (commissioner's rule: team net holes won on Sunday's back 9, then each previous 9). With hole data, `tiebreakLead` computes it (every match's holes in that nine must be entered) and the strip shows the winner as "pending verification" with an outlined pill; Settings `Tiebreak Winner` makes it official. Settings `Tiebreak Winner` (a team name) and `Tiebreak Note` (free text). With all 16 final at 8–8 and no winner, the banner reads "Final · Tied" and a strip under the hero states the rule; once a winner is set, that team gets the trophy and the strip shows the note. A Tiebreak Winner is ignored unless the score is actually 8–8.
 - When all 16 matches are final, the day cards collapse into `<details>`.
 
 ## Design system
