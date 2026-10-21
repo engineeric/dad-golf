@@ -1,23 +1,23 @@
 // Demo scenarios for local testing: http://localhost:8765/?demo=final
 // Each scenario returns CSV text per sheet tab, in the same shape the live sheet exports.
 
-const PLAYERS = `"Nickname","Handicap Index","Team","Flight","Captain"
-"JD","2.3","Eric","A","FALSE"
-"Eric","7.1","Eric","A","TRUE"
-"Cody","14.0","Eric","A","FALSE"
-"Cole","15.0","Eric","A","FALSE"
-"Jbone","15.3","Eric","B","FALSE"
-"Landon","15.8","Eric","B","FALSE"
-"Brad","17.3","Eric","B","FALSE"
-"Drew","23.8","Eric","B","FALSE"
-"Brandon","7.7","Garrett","A","FALSE"
-"JK","9.7","Garrett","A","FALSE"
-"Taylor","14.0","Garrett","A","FALSE"
-"Braden","14.3","Garrett","A","FALSE"
-"Nate","17.0","Garrett","B","FALSE"
-"Rikky","17.6","Garrett","B","FALSE"
-"Garrett","19.1","Garrett","B","TRUE"
-"Jeff","20.2","Garrett","B","FALSE"`;
+const PLAYERS = `"Nickname","Handicap Index","Team","Flight","Captain","Abbreviation"
+"JD","2.3","Eric","A","FALSE",""
+"Eric","7.1","Eric","A","TRUE","ERC"
+"Cody","14.0","Eric","A","FALSE","CDY"
+"Cole","15.0","Eric","A","FALSE",""
+"Jbone","15.3","Eric","B","FALSE",""
+"Landon","15.8","Eric","B","FALSE",""
+"Brad","17.3","Eric","B","FALSE",""
+"Drew","23.8","Eric","B","FALSE",""
+"Brandon","7.7","Garrett","A","FALSE",""
+"JK","9.7","Garrett","A","FALSE",""
+"Taylor","14.0","Garrett","A","FALSE","TAY"
+"Braden","14.3","Garrett","A","FALSE",""
+"Nate","17.0","Garrett","B","FALSE",""
+"Rikky","17.6","Garrett","B","FALSE",""
+"Garrett","19.1","Garrett","B","TRUE",""
+"Jeff","20.2","Garrett","B","FALSE",""`;
 
 // [round, tee time, red 1, red 2, blue 1, blue 2, leader, up, thru]; finals are derived (4 up thru 15 → 4&3).
 const MATCHES = [
@@ -62,6 +62,39 @@ const PRIZES = [
   [3, 15, 'Closest to the Pin', 'Jeff'],
 ];
 
+// Par and men's stroke index per course (same as the real Course Holes tab).
+const CARDS = {
+  1: { par: [4, 4, 4, 3, 5, 4, 3, 4, 4, 4, 4, 5, 3, 4, 4, 3, 5, 4], si: [3, 13, 15, 7, 9, 1, 11, 17, 5, 6, 12, 10, 16, 2, 14, 18, 8, 4] },
+  2: { par: [4, 4, 3, 4, 3, 4, 5, 4, 5, 4, 3, 4, 5, 4, 4, 4, 3, 4], si: [3, 15, 13, 7, 11, 17, 1, 5, 9, 10, 14, 16, 4, 6, 8, 18, 12, 2] },
+  3: { par: [4, 4, 3, 4, 5, 4, 4, 3, 4, 4, 4, 4, 5, 4, 3, 5, 3, 4], si: [6, 10, 18, 8, 16, 2, 12, 14, 4, 3, 9, 1, 13, 5, 15, 17, 11, 7] },
+};
+
+const SIDE = { Garrett: 'Garrett', Eric: 'Eric' };
+const PLAY_OUT = ['Halved', 'Garrett', 'Eric', 'Eric', 'Halved', 'Garrett'];
+
+/**
+ * Hole results that reproduce a [leader, up, thru] score: level holes first, then the
+ * leader's winning run. Final matches are played out to 18 (for the tiebreak).
+ */
+function holesFor([leader, up, thru], seed) {
+  if (!thru) return [];
+  const n = Number(up) || 0;
+  const winner = SIDE[leader] ?? (seed % 2 ? 'Garrett' : 'Eric');
+  const other = winner === 'Garrett' ? 'Eric' : 'Garrett';
+  const level = thru - n;
+  const out = level % 2 ? ['Halved'] : [];
+  for (let i = 0; i < Math.floor(level / 2); i++) out.push(...((i + seed) % 2 ? [winner, other] : [other, winner]));
+  for (let i = 0; i < n; i++) out.push(winner);
+  const final = n > 18 - thru || thru === 18;
+  if (final) for (let h = thru; h < 18; h++) out.push(PLAY_OUT[(h + seed) % PLAY_OUT.length]);
+  return out;
+}
+
+/** Entries the demo score page saved in this browser (the fake web app). */
+function savedEntries(name) {
+  try { return JSON.parse(localStorage.getItem(`demo.scores.${name}`) || '[]'); } catch { return []; }
+}
+
 const csvRow = (cells) => cells.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',');
 
 /**
@@ -75,10 +108,14 @@ const SCENARIOS = {
   midway: { startIn: -2, played: 2 },
   live: { startIn: -2, played: 2, live: 3, startedAgo: 180 },
   final: { startIn: -3, played: 3, mvp: 'JD' },
+  // Hole-by-hole: days 1–2 and day 3 so far come from the Scores tab, not Leader/Up/Thru.
+  holes: { startIn: -2, played: 2, live: 3, startedAgo: 180, holes: true },
   // 8–8: Rikky beats Brad and Jeff halves with Jbone instead.
   tied: { startIn: -3, played: 3, scores: { 13: ['Garrett', 1, 18], 15: ['AS', '', 18] } },
   tiebreak: { startIn: -3, played: 3, scores: { 13: ['Garrett', 1, 18], 15: ['AS', '', 18] },
     tiebreak: ['Garrett', "Won Sunday's back 9 by 2 holes"] },
+  // 8–8 with every hole entered: the computed tiebreak shows as pending verification.
+  tiedholes: { startIn: -3, played: 3, scores: { 13: ['Garrett', 1, 18], 15: ['AS', '', 18] }, holes: true },
 };
 
 const parseClock = (t) => {
@@ -125,12 +162,30 @@ export function demoTabs(name) {
     const idx = matches.flatMap((m, i) => (m[0] === s.live ? [i] : []));
     liveRows(idx.map((i) => matches[i]), s).forEach((row, j) => { matches[idx[j]] = row; });
   }
+  // Match numbers 1..N per round, in tee order (as setupSheet fills them).
+  const numbered = matches.map((m, i) => [...m, matches.slice(0, i).filter((x) => x[0] === m[0]).length + 1]);
+  // Hole-by-hole scenarios move every score into Scores and leave Leader/Up/Thru blank.
+  const scores = [];
+  if (s.holes) {
+    const start = Date.now() - 3 * 86_400_000;
+    numbered.forEach((m, i) => {
+      const holes = holesFor(m.slice(6, 9), i);
+      // The live round's entries are recent (newest a few minutes ago) so "Updated N min ago" reads true.
+      const at = (h) => (m[0] === s.live ? Date.now() - ((holes.length - 1 - h) * 12 + (i % 4) * 3 + 1) * 60_000 : start + i * 1000 + h);
+      holes.forEach((result, h) => scores.push([m[0], m[9], h + 1, result, at(h), m[2]]));
+      m.splice(6, 3, '', '', '');
+    });
+    for (const e of savedEntries(name)) scores.push([e.round, e.match, e.hole, e.result, e.at, e.by]);
+  }
 
   return {
     Players: PLAYERS,
     Prizes: [csvRow(['Round', 'Hole', 'Prize', 'Winner']),
       ...PRIZES.map((p) => csvRow(p[0] <= s.played ? p : [...p.slice(0, 3), '']))].join('\n'),
-    Matches: [csvRow(['Round', 'Tee Time', 'Red 1', 'Red 2', 'Blue 1', 'Blue 2', 'Leader', 'Up', 'Thru']), ...matches.map(csvRow)].join('\n'),
+    Matches: [csvRow(['Round', 'Tee Time', 'Red 1', 'Red 2', 'Blue 1', 'Blue 2', 'Leader', 'Up', 'Thru', 'Match']), ...numbered.map(csvRow)].join('\n'),
+    'Course Holes': [csvRow(['Round', 'Hole', 'Par', 'Stroke Index']),
+      ...[1, 2, 3].flatMap((r) => CARDS[r].par.map((par, h) => csvRow([r, h + 1, par, CARDS[r].si[h]])))].join('\n'),
+    Scores: [csvRow(['Round', 'Match', 'Hole', 'Result', 'Updated', 'By']), ...scores.map(csvRow)].join('\n'),
     Schedule: [
       csvRow(['Round', 'Format', 'Date', 'Course', 'Course URL', 'Address', 'Coordinates', 'Tees', 'Yardage', 'Par', 'Rating', 'Slope', 'Notes']),
       csvRow([1, 'Matched', isoDate(s.startIn), 'Swope Memorial Golf Course', 'https://www.swopememorialgolfcourse.com',
@@ -141,8 +196,9 @@ export function demoTabs(name) {
         '4605 Clubhouse Drive\nBasehor, KS 66007', '39.1290, -94.9020', 'White', '6,040', '71', '70.2', '122', '']),
     ].join('\n'),
     Settings: [
-      csvRow(['Edition', 'Red Team', 'Blue Team', 'Lower %', 'Higher %', 'Timezone', 'Round Minutes', 'MVP', 'Handicap', 'Tiebreak Winner', 'Tiebreak Note']),
-      csvRow(['IV', 'Garrett', 'Eric', '35.0%', '15.0%', 'America/Chicago', '300', s.mvp ?? '', handicap, ...(s.tiebreak ?? ['', ''])]),
+      csvRow(['Edition', 'Red Team', 'Blue Team', 'Lower %', 'Higher %', 'Timezone', 'Round Minutes', 'MVP', 'Handicap', 'Tiebreak Winner', 'Tiebreak Note', 'Hole Entry', 'Score App URL']),
+      csvRow(['IV', 'Garrett', 'Eric', '35.0%', '15.0%', 'America/Chicago', '300', s.mvp ?? '', handicap, ...(s.tiebreak ?? ['', '']),
+        s.holes ? 'On' : 'Off', s.holes ? 'https://demo.invalid/score' : '']),
     ].join('\n'),
   };
 }

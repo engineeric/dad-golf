@@ -142,6 +142,8 @@ function normalizePlayers(rows, teams) {
       side: sideOf(r.team, teams),
       flight: (r.flight || '').toUpperCase(),
       captain: truthy(r.captain),
+      // Scorecard label on score.html (up to 3 characters); blank means automatic.
+      abbr: (r.abbreviation || '').trim().toUpperCase().slice(0, 3),
     }))
     .filter((p) => p.name && p.side && p.hcp != null);
 
@@ -202,6 +204,9 @@ function normalizeMatches(rows, teams, aliases) {
         teeTime: time,
         red: [r.red1, r.red2].filter(Boolean).map(display),
         blue: [r.blue1, r.blue2].filter(Boolean).map(display),
+        matchNo: num(r.match),
+        // Filled Leader/Up/Thru is a manual result that wins over hole-by-hole entries.
+        override: wholeHoles(r.thru) > 0,
         ...matchState(r, teams),
       };
     })
@@ -257,6 +262,9 @@ function normalizeSettings(rows, playerRows) {
       side: ['red', 'blue'].find((side) => key(teams[side]) === key(r.tiebreakwinner ?? '')) ?? null,
       note: r.tiebreaknote || '',
     },
+    // Hole-by-hole entry (score.html): On/Off, and the score web app's URL.
+    holeEntry: /^on$/i.test(r.holeentry ?? ''),
+    scoreAppUrl: /^https:\/\//.test(r.scoreappurl ?? '') ? r.scoreappurl : '',
     // "Course" plays off WHS course handicaps from each day's slope/rating/par; anything else uses index.
     handicapMode: /course/i.test(r.handicap ?? '') ? 'course' : 'index',
   };
@@ -275,13 +283,39 @@ function normalizePrizes(rows, aliases) {
     .filter((p) => p.round != null && p.prize);
 }
 
+/** Par and stroke index per hole, by round. */
+function normalizeCourseHoles(rows) {
+  return (rows ?? [])
+    .map((r) => ({ round: num(r.round), hole: num(r.hole), par: num(r.par), si: num(r.strokeindex) }))
+    .filter((h) => h.round != null && h.hole >= 1 && h.hole <= HOLES);
+}
+
+/** Hole results: side ('red'/'blue'), 'halved', or null for a cleared hole; `at` orders competing entries. */
+function normalizeScores(rows, teams) {
+  return (rows ?? [])
+    .map((r) => {
+      const v = key(r.result ?? '');
+      return {
+        round: num(r.round),
+        match: num(r.match),
+        hole: num(r.hole),
+        result: HALVED.has(v) ? 'halved' : sideOf(r.result ?? '', teams),
+        at: num(r.updated) ?? 0,
+        by: r.by || '',
+      };
+    })
+    .filter((x) => x.round != null && x.match != null && x.hole >= 1 && x.hole <= HOLES);
+}
+
 export async function loadData() {
-  const [players, matches, schedule, settings, prizes] = await Promise.all([
+  const [players, matches, schedule, settings, prizes, courseHoles, scores] = await Promise.all([
     fetchTab('Players', ['team', 'flight']),
     fetchTab('Matches', ['round', 'red1', 'blue1']),
     fetchTab('Schedule', ['round', 'format', 'course']),
     fetchTab('Settings', ['timezone']),
     fetchTab('Prizes', ['round', 'hole', 'prize']),
+    fetchTab('Course Holes', ['round', 'hole', 'strokeindex']),
+    fetchTab('Scores', ['round', 'match', 'hole', 'result']),
   ]);
   if (!players) throw new Error('The "Players" tab is missing from the sheet.');
   const normalizedSettings = normalizeSettings(settings, players);
@@ -293,6 +327,9 @@ export async function loadData() {
     matches: normalizeMatches(matches ?? [], normalizedSettings.teams, roster.aliases),
     schedule: normalizeSchedule(schedule),
     prizes: normalizePrizes(prizes, roster.aliases),
+    courseHoles: normalizeCourseHoles(courseHoles),
+    // Ignored entirely while Hole Entry is Off, so the site behaves as if the tab didn't exist.
+    scores: normalizedSettings.holeEntry ? normalizeScores(scores, normalizedSettings.teams) : [],
     settings: normalizedSettings,
   };
 }

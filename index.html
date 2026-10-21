@@ -103,7 +103,15 @@
       align-items: stretch;
       border-top: 1px solid var(--rule);
     }
-    .match:first-child { border-top: 0; }
+    .matches > li:first-child, .matches > li:first-child .match { border-top: 0; }
+    /* A match scored from hole entries opens to its scorecard. */
+    .match-det > summary { list-style: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .match-det > summary::-webkit-details-marker { display: none; }
+    .match-det > summary:hover .result { background: var(--cream); }
+    .match__chev::after { content: "▾"; display: block; font-size: 15px; line-height: 1; color: var(--muted); }
+    .match-det[open] .match__chev::after { content: "▴"; }
+    .match__card { padding: 10px 14px 12px; background: var(--cream); border-top: 1px dashed var(--rule); }
+    .match__card .key { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 8px; font-size: 11px; }
     .side { padding: 14px 20px; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
     .side--blue { text-align: right; }
     .side__names { font-size: 17px; font-weight: 600; }
@@ -155,6 +163,24 @@
     /* Gold like Halved; the ring carries the colour since gold text is too faint on white. */
     .pill--square { color: var(--ink); box-shadow: inset 0 0 0 2px var(--gold); }
     .result .live-dot { width: 6px; height: 6px; margin-right: 5px; vertical-align: 1px; }
+
+    .keep-score {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 16px;
+      padding: 14px 18px;
+      border-radius: var(--radius);
+      background: var(--navy);
+      color: var(--gold);
+      font-weight: 700;
+      font-size: 16px;
+      text-decoration: none;
+      box-shadow: var(--shadow);
+    }
+    .keep-score svg { width: 18px; height: 18px; }
+    .keep-score:hover { background: var(--navy-2); }
 
     .projected {
       display: flex;

@@ -5,6 +5,7 @@ export const SIDES = ['red', 'blue'];
 export const TOTAL_POINTS = 16;
 export const TO_WIN = TOTAL_POINTS / 2 + 0.5;
 export const DAYS = 3;
+export const HOLES = 18;
 
 export const FORMATS = {
   Matched: { title: 'Matched Flights', sub: '2v2 · AA & BB', slots: ['AA', 'AA', 'BB', 'BB'] },
@@ -238,15 +239,104 @@ function inferFormat(matches) {
   return matches.every((m) => m.red.length <= 1 && m.blue.length <= 1) ? 'Singles' : null;
 }
 
+const holeNet = (r) => (r === 'red' ? 1 : r === 'blue' ? -1 : 0);
+
+/**
+ * Match state from hole results (index 0 = hole 1; 'red', 'blue', 'halved' or null).
+ * Final once a side leads by more than the holes left, counting only holes entered in
+ * order from 1 (a gap means a missing entry, so nothing after it can close the match).
+ * Holes played after the close (for the tiebreak) don't change the result.
+ * While live, Up counts every entered hole and Thru is the last one entered.
+ */
+export function holeState(holes) {
+  let net = 0;
+  for (let i = 0; i < HOLES && holes[i]; i++) {
+    net += holeNet(holes[i]);
+    const left = HOLES - 1 - i;
+    if (Math.abs(net) > left) {
+      const up = Math.abs(net);
+      const leader = net > 0 ? 'red' : 'blue';
+      return { status: 'final', leader, up, thru: i + 1, winner: leader, result: left ? `${up}&${left}` : `${up} UP` };
+    }
+    if (!left && !net) return { status: 'final', leader: 'AS', up: 0, thru: HOLES, winner: 'Halved', result: 'Halved' };
+  }
+  const entered = holes.map((r, i) => (r ? i + 1 : 0)).filter(Boolean);
+  if (!entered.length) return { status: 'scheduled', leader: null, up: null, thru: null, winner: null, result: '' };
+  const all = holes.reduce((n, r) => n + holeNet(r), 0);
+  return { status: 'live', leader: all > 0 ? 'red' : all < 0 ? 'blue' : 'AS', up: Math.abs(all), thru: Math.max(...entered), winner: null, result: '' };
+}
+
+/** The newest entry per hole for one match, as an 18-long array. */
+export function matchHoles(scores, round, match) {
+  const holes = Array(HOLES).fill(null);
+  const at = Array(HOLES).fill(-Infinity);
+  for (const x of scores) {
+    if (x.round !== round || x.match !== match || x.at < at[x.hole - 1]) continue;
+    at[x.hole - 1] = x.at;
+    holes[x.hole - 1] = x.result;
+  }
+  return holes;
+}
+
+/** Strokes received on each hole (index 0 = hole 1): one where stroke index ≤ n, two where ≤ n − 18. */
+export function strokeHoles(n, card) {
+  return Array.from({ length: HOLES }, (_, i) => {
+    const si = card?.[i]?.si;
+    return si ? (n >= si ? 1 : 0) + (n - HOLES >= si ? 1 : 0) : 0;
+  });
+}
+
+/** Handicaps for both sides and the strokes the higher side receives. `players` is a Map by name. */
+export function matchStrokes(match, players, settings, day) {
+  const hcp = Object.fromEntries(SIDES.map((side) => [side, match[side].length ? sideHandicap(match[side], players, settings, day) : null]));
+  const n = hcp.red != null && hcp.blue != null ? strokes(hcp.red, hcp.blue) : 0;
+  return { hcp, n, receiver: n ? (hcp.red > hcp.blue ? 'red' : 'blue') : null };
+}
+
+/**
+ * The 8–8 tiebreak from hole results: team net holes won on the last day's back 9, then its
+ * front 9, then the day before's back 9, and so on. Every match's holes in that nine must be
+ * entered (holes after a close-out are played out for this); otherwise there's no answer yet.
+ * Returns { side, margin, day, back } or null.
+ */
+export function tiebreakLead(days) {
+  const dated = datedDays(days);
+  const order = (dated.length === days.length ? dated : days).slice().reverse();
+  for (const day of order) {
+    const expected = day.formatInfo?.slots.length ?? 0;
+    if (!day.matches.length || day.matches.length < expected) return null;
+    for (const back of [true, false]) {
+      let net = 0;
+      for (const m of day.matches) {
+        for (let i = back ? 9 : 0; i < (back ? 18 : 9); i++) {
+          if (!m.holes?.[i]) return null;
+          net += holeNet(m.holes[i]);
+        }
+      }
+      if (net) return { side: net > 0 ? 'red' : 'blue', margin: Math.abs(net), day, back };
+    }
+  }
+  return null;
+}
+
 /** Merges Schedule rows and Matches into one entry per day, always DAYS long. */
-export function buildDays({ schedule, matches, prizes = [] }) {
+export function buildDays({ schedule, matches, prizes = [], courseHoles = [], scores = [] }) {
   return Array.from({ length: DAYS }, (_, i) => {
     const round = i + 1;
     const info = schedule.find((d) => d.round === round) ?? {};
     const dayMatches = matches
       .filter((m) => m.round === round)
-      .sort((a, b) => (a.teeTime?.minutes ?? Infinity) - (b.teeTime?.minutes ?? Infinity) || a.row - b.row)
-      .map((m, idx) => ({ ...m, number: idx + 1 }));
+      .sort((a, b) => (a.teeTime?.minutes ?? Infinity) - (b.teeTime?.minutes ?? Infinity)
+        || (a.matchNo ?? Infinity) - (b.matchNo ?? Infinity) || a.row - b.row)
+      .map((m, idx) => {
+        const number = m.matchNo ?? idx + 1;
+        const holes = matchHoles(scores, round, number);
+        // Leader/Up/Thru in Matches (an override) wins; otherwise hole entries decide the score.
+        const derived = !m.override && holes.some(Boolean) ? holeState(holes) : {};
+        return { ...m, number, holes, ...derived };
+      });
+    // Par and stroke index for holes 1–18 (null where the Course Holes tab has none).
+    const card = Array.from({ length: HOLES }, (_, h) => courseHoles.find((c) => c.round === round && c.hole === h + 1) ?? null);
     const format = info.format ?? inferFormat(dayMatches);
     return {
       round,
@@ -264,6 +354,7 @@ export function buildDays({ schedule, matches, prizes = [] }) {
       slope: info.slope ?? '',
       notes: info.notes ?? '',
       matches: dayMatches,
+      card,
       prizes: prizes.filter((p) => p.round === round).sort((a, b) => (a.hole ?? 99) - (b.hole ?? 99) || a.row - b.row),
     };
   });
