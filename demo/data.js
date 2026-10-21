@@ -169,7 +169,10 @@ export function demoTabs(name) {
   if (s.holes) {
     const start = Date.now() - 3 * 86_400_000;
     numbered.forEach((m, i) => {
-      holesFor(m.slice(6, 9), i).forEach((result, h) => scores.push([m[0], m[9], h + 1, result, start + i * 1000 + h, m[2]]));
+      const holes = holesFor(m.slice(6, 9), i);
+      // The live round's entries are recent (newest a few minutes ago) so "Updated N min ago" reads true.
+      const at = (h) => (m[0] === s.live ? Date.now() - ((holes.length - 1 - h) * 12 + (i % 4) * 3 + 1) * 60_000 : start + i * 1000 + h);
+      holes.forEach((result, h) => scores.push([m[0], m[9], h + 1, result, at(h), m[2]]));
       m.splice(6, 3, '', '', '');
     });
     for (const e of savedEntries(name)) scores.push([e.round, e.match, e.hole, e.result, e.at, e.by]);

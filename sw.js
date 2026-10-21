@@ -3,7 +3,7 @@
 // to the last copy when the network fails or stalls.
 
 const CACHE = 'daddy-score-v1';
-const SHELL = ['score.html', 'css/theme.css', 'js/score.js', 'js/sheet.js', 'js/golf.js', 'js/ui.js', 'favicon.svg'];
+const SHELL = ['score.html', 'css/theme.css', 'js/score.js', 'js/sheet.js', 'js/golf.js', 'js/ui.js', 'js/card.js', 'favicon.svg'];
 const TIMEOUT_MS = 6000;
 
 self.addEventListener('install', (event) => {

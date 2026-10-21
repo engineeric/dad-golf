@@ -4,6 +4,7 @@
 import { DEMO, loadData } from './sheet.js';
 import { HOLES, buildDays, daysUntil, formatTime, holeState, matchStrokes, strokeHoles } from './golf.js';
 import { applyEdition, esc, renderChrome, showError, withDemo } from './ui.js';
+import { CARD_KEY, cardLabel, renderCard } from './card.js';
 
 renderChrome('score', { label: 'Keep score', nav: false });
 const app = document.getElementById('app');
@@ -205,18 +206,6 @@ async function load() {
 
 // ---------- Rendering ----------
 
-/**
- * Short labels for the scorecard rows. A player's Abbreviation from the Players tab wins;
- * otherwise a pair is the first letters of each ("BR/JK", longer where partners would
- * collide, e.g. "COD/COL") and a single player is the nickname up to 6 letters.
- */
-function abbr(names) {
-  const set = names.map((n) => state.players.get(n)?.abbr || '');
-  if (names.length < 2) return set[0] || (names[0] ?? '').slice(0, 6).toUpperCase();
-  let n = 2;
-  while (n < 6 && names[0].slice(0, n).toUpperCase() === names[1].slice(0, n).toUpperCase()) n++;
-  return names.map((x, i) => set[i] || x.slice(0, n).toUpperCase()).join('/');
-}
 const pair = (names) => names.map(esc).join(' / ');
 
 function statusPill(s, teams) {
@@ -230,36 +219,6 @@ function statusPill(s, teams) {
     return `${pill}<span class="eyebrow">Thru ${s.thru}</span>`;
   }
   return '<span class="pill pill--none">Not started</span>';
-}
-
-function scorecard(nine, holes, strokesFor, receiver, card, labels, sel) {
-  const idx = Array.from({ length: 9 }, (_, i) => i + nine * 9);
-  let net = 0;
-  const running = holes.map((h) => (net += h.result === 'red' ? 1 : h.result === 'blue' ? -1 : 0));
-  const cell = (i, side) => {
-    const r = holes[i].result;
-    const cls = [];
-    let mark = '';
-    if (r === side) { cls.push(`won-${side}`); mark = '+'; } else if (r === 'halved') { cls.push('halved'); mark = '0'; } else if (r) { cls.push('lost'); mark = '−'; }
-    if (i === sel) cls.push('cur');
-    if (holes[i].pending) cls.push('pending');
-    const dots = side === receiver && strokesFor[i] ? `<span class="stroke">${'<i></i>'.repeat(strokesFor[i])}</span>` : '';
-    return `<td data-hole="${i}" class="${cls.join(' ')}">${mark}${dots}</td>`;
-  };
-  const upCell = (i) => {
-    if (!holes[i].result) return `<td data-hole="${i}"></td>`;
-    const v = running[i];
-    return v === 0 ? `<td data-hole="${i}" class="up-as">AS</td>` : `<td data-hole="${i}" class="up-${v > 0 ? 'red' : 'blue'}">${Math.abs(v)}</td>`;
-  };
-  return `
-    <div class="sc"><table aria-label="Holes ${nine ? '10–18' : '1–9'}">
-      <tr><th class="l">Hole</th>${idx.map((i) => `<th data-hole="${i}">${i + 1}</th>`).join('')}</tr>
-      <tr class="par"><td class="l">Par</td>${idx.map((i) => `<td data-hole="${i}">${card[i]?.par ?? ''}</td>`).join('')}</tr>
-      <tr class="hcp"><td class="l">Hcp</td>${idx.map((i) => `<td data-hole="${i}">${card[i]?.si ?? ''}</td>`).join('')}</tr>
-      <tr class="red"><td class="l">${esc(labels.red)}</td>${idx.map((i) => cell(i, 'red')).join('')}</tr>
-      <tr class="blue"><td class="l">${esc(labels.blue)}</td>${idx.map((i) => cell(i, 'blue')).join('')}</tr>
-      <tr class="up"><td class="l">Up</td>${idx.map(upCell).join('')}</tr>
-    </table></div>`;
 }
 
 const WHY = {
@@ -320,7 +279,7 @@ function render() {
   const info = matchStrokes(match, state.players, settings, day);
   const strokesFor = strokeHoles(info.n, day.card);
   const s = match.override ? match : holeState(holes.map((h) => h.result));
-  const labels = { red: abbr(match.red), blue: abbr(match.blue) };
+  const labels = { red: cardLabel(match.red, state.players), blue: cardLabel(match.blue, state.players) };
   const names = { red: pair(match.red), blue: pair(match.blue) };
   const got = strokesFor[i] && info.receiver;
   const res = holes[i].result;
@@ -345,9 +304,8 @@ function render() {
         </div>
       </section>
       ${lockedNote || `${overrideNote}${closedNote}`}
-      ${scorecard(0, holes, strokesFor, info.receiver, day.card, labels, i)}
-      ${scorecard(1, holes, strokesFor, info.receiver, day.card, labels, i)}
-      <div class="key">+ won · − lost · 0 halved · <i></i> stroke</div>
+      ${renderCard({ holes, strokes: strokesFor, receiver: info.receiver, card: day.card, labels, sel: i })}
+      <div class="key">${CARD_KEY}</div>
       ${readOnly ? '' : `<section class="hole" aria-label="Hole ${i + 1}">
         <div class="hole__nav">
           <button type="button" data-go="-1"${i === 0 ? ' disabled' : ''}>‹ ${i || ''}</button>

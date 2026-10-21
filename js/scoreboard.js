@@ -1,9 +1,10 @@
 import { loadData } from './sheet.js';
 import {
   SIDES, TOTAL_POINTS, TO_WIN, awards, buildDays, currentDay, datedDays, dayTitle, daysUntil, formatDate, formatHcp, formatPts,
-  formatTime, isDayComplete, isDayLive, loserResult, matchStrokes, projectedPoints, formatPlaying, playerStandings, points, tiebreakLead,
+  formatTime, isDayComplete, isDayLive, loserResult, matchStrokes, projectedPoints, strokeHoles, formatPlaying, playerStandings, points, tiebreakLead,
 } from './golf.js';
 import { ICONS, applyEdition, esc, holeBadge, playerChip, renderChrome, showError, withDemo } from './ui.js';
+import { CARD_KEY, cardLabel, renderCard } from './card.js';
 
 const REFRESH_MS = 60_000;
 
@@ -14,6 +15,7 @@ const banner = document.getElementById('banner');
 // Expanded <details> survive the auto-refresh re-render.
 const openPlayers = new Set();
 const openDays = new Set();
+const openCards = new Set();
 /**
  * Who has won: the first side to 8½, or at 8–8 with every match final, the Tiebreak Winner from Settings.
  * A Tiebreak Winner is ignored unless the score really is tied (e.g. one left over in a copied sheet).
@@ -157,7 +159,30 @@ function renderResult(m, teams, dayComplete) {
   return `<span class="eyebrow">Match ${m.number}</span><span class="pill pill--upcoming">${m.teeTime ? formatTime(m.teeTime) : 'Upcoming'}</span>`;
 }
 
-function renderDay(day, players, settings, collapsible) {
+/** "Updated 4 min ago" from the newest hole entry's tap time. */
+function updatedAgo(at) {
+  const min = Math.floor((Date.now() - at) / 60_000);
+  if (min < 1) return 'Updated just now';
+  if (min < 60) return `Updated ${min} min ago`;
+  return `Updated ${Math.floor(min / 60)} hr ${min % 60} min ago`;
+}
+
+/** A match's hole-by-hole card, opened from its row. Only for matches scored from hole entries. */
+function renderMatchCard(m, day, players, settings, lastEntry) {
+  const info = matchStrokes(m, players, settings, day);
+  const holes = m.holes.map((result) => ({ result, pending: false }));
+  const labels = { red: cardLabel(m.red, players), blue: cardLabel(m.blue, players) };
+  const at = lastEntry.get(`${day.round}-${m.number}`);
+  // Freshness only matters while the match is being played.
+  const updated = m.status === 'live' && at ? `<span>${updatedAgo(at)}</span>` : '';
+  return `
+    <div class="match__card">
+      ${renderCard({ holes, strokes: strokeHoles(info.n, day.card), receiver: info.receiver, card: day.card, labels, compact: true })}
+      <div class="key"><span>${CARD_KEY}</span>${updated}</div>
+    </div>`;
+}
+
+function renderDay(day, players, settings, collapsible, lastEntry) {
   const pts = points(day.matches);
   const played = day.matches.some((m) => m.winner);
   const complete = isDayComplete(day);
@@ -166,12 +191,23 @@ function renderDay(day, players, settings, collapsible) {
     ? day.url ? `<a href="${esc(day.url)}" target="_blank" rel="noopener">${esc(day.course)}</a>` : esc(day.course)
     : '<span class="tba">Course TBA</span>';
   const rows = day.matches.length
-    ? day.matches.map((m) => `
-        <li class="match${m.winner === 'Halved' ? ' match--halved' : ''}">
+    ? day.matches.map((m) => {
+      const cls = `match${m.winner === 'Halved' ? ' match--halved' : ''}`;
+      const sides = (chev) => `
           ${renderSide('red', m.red, m, matchStrokes(m, players, settings, day))}
-          <div class="result">${renderResult(m, settings.teams, complete)}</div>
-          ${renderSide('blue', m.blue, m, matchStrokes(m, players, settings, day))}
-        </li>`).join('')
+          <div class="result">${renderResult(m, settings.teams, complete)}${chev}</div>
+          ${renderSide('blue', m.blue, m, matchStrokes(m, players, settings, day))}`;
+      // Matches scored from hole entries open to their scorecard; a manual result has none to show.
+      if (m.override || !m.holes?.some(Boolean)) return `<li class="${cls}">${sides('')}</li>`;
+      const id = `${day.round}-${m.number}`;
+      return `
+        <li class="match-item">
+          <details class="match-det" data-card="${id}"${openCards.has(id) ? ' open' : ''}>
+            <summary class="${cls}" aria-label="Match ${m.number} scorecard">${sides('<span class="match__chev" aria-hidden="true"></span>')}</summary>
+            ${renderMatchCard(m, day, players, settings, lastEntry)}
+          </details>
+        </li>`;
+    }).join('')
     : `<li class="empty-row tba">Matchups TBA${expected ? ` · ${expected} matches` : ''}</li>`;
 
   const head = `
@@ -309,6 +345,12 @@ async function refresh() {
     const pts = points(all);
     const played = all.filter((m) => m.winner).length;
     const liveDay = days.find((d) => isDayLive(d, data.settings.timezone)) ?? null;
+    // Newest hole-entry tap time per match, for "Updated N min ago".
+    const lastEntry = new Map();
+    for (const x of data.scores) {
+      const id = `${x.round}-${x.match}`;
+      if (x.at > (lastEntry.get(id) ?? 0)) lastEntry.set(id, x.at);
+    }
     const result = outcome(pts, played, data.settings.tiebreak);
     renderBanner(played, days, data.settings, liveDay, result);
     const standings = playerStandings(days, data.players);
@@ -319,7 +361,7 @@ async function refresh() {
       ${renderHero(pts, played, data.settings, projectedPoints(days, liveDay), result, result.tied && !result.champion ? tiebreakLead(days) : null)}
       ${renderKeepScore(days, data.settings)}
       ${renderMvp(data.settings, standings)}
-      <div class="rounds">${ordered.map((d) => renderDay(d, players, data.settings, final)).join('')}</div>
+      <div class="rounds">${ordered.map((d) => renderDay(d, players, data.settings, final, lastEntry)).join('')}</div>
       ${days.some(isDayComplete) ? renderStandings(standings, awards(standings, days, data.players, data.settings)) : ''}`;
     fitPairs();
   } catch (err) {
@@ -343,7 +385,8 @@ function fitPairs() {
 app.addEventListener('toggle', (e) => {
   const el = e.target;
   const [set, id] = el.dataset.player != null ? [openPlayers, el.dataset.player]
-    : el.dataset.day != null ? [openDays, +el.dataset.day] : [];
+    : el.dataset.day != null ? [openDays, +el.dataset.day]
+      : el.dataset.card != null ? [openCards, el.dataset.card] : [];
   if (!set) return;
   if (el.open) set.add(id); else set.delete(id);
   // Rows in a closed card have no width (skipped by fitPairs), so check again once one opens.

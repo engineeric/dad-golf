@@ -53,7 +53,8 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 
 | File | Role |
 |---|---|
-| `index.html` + `js/scoreboard.js` | Scoreboard: banner, hero score, Tournament MVP card, day cards with match rows, strokes and hole prizes, then player standings and awards |
+| `index.html` + `js/scoreboard.js` | Scoreboard: banner, hero score, Tournament MVP card, day cards with match rows, strokes and hole prizes, then player standings and awards. A match scored from hole entries opens (`<details>`) to a compact read-only scorecard, with "Updated N min ago" while it's live. |
+| `js/card.js` | The scorecard grid shared by score.html (editable) and the Scoreboard (compact), plus row labels (`cardLabel`) |
 | `schedule.html` + `js/schedule.js` | Per-day course info, map embed, directions, prize holes, tee sheet, "Find me", calendar export |
 | `teams.html` + `js/teams.js` | Rosters by flight, captains, average handicap index |
 | `matchups.html` + `js/matchups.js` | Lineup preview for Matched / Mixed / Singles, with team handicaps and strokes. The default view, on every screen, is one round at a time: a format toggle, a totals card and a card per match with drop-downs. From 1100px wide, a "One round / All rounds" toggle offers an optional board of all three rounds as columns in schedule order, where players are cards (choosing a slot opens a tray of that team's players in that flight, and picking one moves on to the next empty slot). The board is kept in the URL hash as `v=all` and ignored on narrower screens. Official matchups from the Matches tab are locked in; the rest is editable. Opponents already met in another round are disabled, and the fill buttons retry until they find a lineup with no rematches. All three lineups are kept in the URL hash. |

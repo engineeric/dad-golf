@@ -520,6 +520,47 @@ main {
 .loader > .eyebrow { color: var(--muted); font-size: 10px; }
 @keyframes loader-spin { to { transform: rotate(360deg); } }
 
+/* ---------- Scorecard (score.html, and expanded matches on the Scoreboard) ---------- */
+
+.sc { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.sc table { border-collapse: collapse; width: 100%; table-layout: fixed; font-variant-numeric: tabular-nums; }
+.sc th, .sc td { border: 1px solid var(--rule); text-align: center; height: 34px; padding: 0; position: relative; font-size: 14px; }
+.sc th { background: var(--navy); color: var(--white); font-weight: 700; font-size: 12px; height: 26px; border-color: var(--navy-2); }
+.sc .l { width: 58px; text-align: left; padding-left: 5px; font-size: 10px; letter-spacing: 0.04em; font-weight: 700; white-space: nowrap; overflow: hidden; }
+.sc tr.par td, .sc tr.hcp td { height: 24px; font-size: 12px; color: var(--muted); background: var(--cream); }
+.sc tr.par td.l, .sc tr.hcp td.l { color: var(--muted); }
+.sc tr.red td.l { background: var(--red); color: var(--white); }
+.sc tr.blue td.l { background: var(--blue); color: var(--white); }
+.sc tr.up td { height: 26px; font-size: 12px; font-weight: 700; }
+.sc--edit td[data-hole] { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.sc .won-red { background: var(--red); color: var(--white); font-weight: 800; }
+.sc .won-blue { background: var(--blue); color: var(--white); font-weight: 800; }
+.sc .lost { color: var(--muted); }
+.sc .halved { background: rgba(204, 166, 92, 0.25); }
+.sc .up-red { background: var(--won-red); color: var(--fg-red); }
+.sc .up-blue { background: var(--won-blue); color: var(--fg-blue); }
+.sc .up-as { color: var(--ink); }
+@media (prefers-color-scheme: dark) { .sc .up-as { color: var(--gold); } }
+.sc .cur { box-shadow: inset 0 0 0 2px var(--ink); }
+.sc .pending { outline: 2px dashed var(--gold); outline-offset: -4px; }
+.sc .stroke { position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); display: flex; gap: 2px; }
+.sc .stroke i { width: 5px; height: 5px; border-radius: 50%; background: var(--gold); }
+.sc .won-red .stroke i, .sc .won-blue .stroke i { background: var(--white); }
+.key { text-align: center; font-size: 12px; color: var(--muted); }
+.key i { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); vertical-align: 1px; }
+
+/* Compact, read-only version under a Scoreboard match row. */
+.sc--compact { box-shadow: none; border-radius: 0; background: transparent; }
+.sc--compact table + table { margin-top: 6px; }
+.sc--compact th, .sc--compact td { height: 26px; font-size: 12px; }
+.sc--compact th { height: 20px; font-size: 10px; }
+.sc--compact .l { width: 52px; font-size: 9px; padding-left: 4px; }
+.sc--compact tr.par td { height: 18px; font-size: 10px; }
+.sc--compact tr.up td { height: 22px; font-size: 11px; }
+.sc--compact td { background: var(--surface); }
+.sc--compact .stroke { bottom: 2px; }
+.sc--compact .stroke i { width: 4px; height: 4px; }
+
 /* Skeleton placeholders (Scoreboard). */
 .skel { display: block; background: var(--rule); border-radius: 3px; animation: skel-pulse 1.2s ease-in-out infinite alternate; }
 @keyframes skel-pulse { from { opacity: 0.55; } to { opacity: 1; } }
