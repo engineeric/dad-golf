@@ -58,7 +58,27 @@ const SCORE_ACTIONS = {
   },
 
   /**
-   * Saves hole results: entries [{ round, match, hole, result: 'red'|'blue'|'halved'|'', at }].
+   * A match's hole results straight from the sheet (no gviz lag), so teammates' phones stay in
+   * step: holes [{ hole, result: 'red'|'blue'|'halved'|'', at, by }].
+   */
+  match: function (req) {
+    const player = scorePlayerByKey(req.key);
+    if (!player) return { error: 'This link is no longer valid. Request a new one.', code: 'badkey' };
+    const settings = scoreSettings();
+    const scores = SpreadsheetApp.getActive().getSheetByName('Scores');
+    if (!scores || scores.getLastRow() < 2) return { ok: true, holes: [] };
+    const h = scoreHeaderIndex(scores);
+    const holes = scores.getRange(2, 1, scores.getLastRow() - 1, scores.getLastColumn()).getValues()
+      .filter((r) => Number(r[h.Round]) === Number(req.round) && Number(r[h.Match]) === Number(req.match))
+      .map((r) => ({ hole: Number(r[h.Hole]), result: scoreSideOf(r[h.Result], settings), at: Number(r[h.Updated]) || 0, by: String(r[h.By]) }));
+    return { ok: true, holes: holes };
+  },
+
+  /**
+   * Saves hole results: entries [{ round, match, hole, result: 'red'|'blue'|'halved'|'', at, prev, force }].
+   * `prev` is what the phone showed for the hole before the tap. If someone else has since
+   * entered something different, the entry is held back as a conflict (with the current
+   * result) unless `force` is set, so nobody silently overwrites a teammate.
    * Players can only enter today's round, for a match they're in, until the day is locked
    * (every match has all 18 holes entered); admins can enter anything.
    * Each hole keeps the entry with the newest `at`, so an older queued entry never overwrites a newer one.
@@ -102,7 +122,13 @@ const SCORE_ACTIONS = {
           if (m.players.indexOf(player.nickname.toLowerCase()) < 0) return rejected.push({ id: id, why: 'not your match' });
         }
         let row = rows.filter((r) => Number(r[h.Round]) === round && Number(r[h.Match]) === match && Number(r[h.Hole]) === hole)[0];
-        if (row && Number(row[h.Updated]) > at) return saved.push(id); // a newer entry is already there
+        const current = row ? scoreSideOf(row[h.Result], settings) : '';
+        const by = row ? String(row[h.By]) : '';
+        const prev = e.prev === undefined || e.prev === null ? null : String(e.prev).toLowerCase();
+        if (!e.force && prev !== null && current !== prev && current !== result && by && by.toLowerCase() !== player.nickname.toLowerCase()) {
+          return rejected.push({ id: id, why: 'conflict', current: { result: current, by: by, at: Number(row[h.Updated]) || 0 } });
+        }
+        if (!e.force && row && Number(row[h.Updated]) > at) return saved.push(id); // a newer entry is already there
         if (!row) {
           row = new Array(scores.getLastColumn()).fill('');
           row[h.Round] = round;
@@ -350,6 +376,16 @@ function scheduleLinks() {
 }
 
 // ---------- Main sheet reads ----------
+
+/** A Scores Result cell (team name, Halved or blank) as 'red', 'blue', 'halved' or ''. */
+function scoreSideOf(value, settings) {
+  const v = String(value).trim().toLowerCase();
+  if (!v) return '';
+  if (v === 'halved') return 'halved';
+  if (v === settings.red.toLowerCase()) return 'red';
+  if (v === settings.blue.toLowerCase()) return 'blue';
+  return '';
+}
 
 function scoreSettings() {
   const sheet = SpreadsheetApp.getActive().getSheetByName('Settings');
