@@ -206,14 +206,16 @@ async function load() {
 // ---------- Rendering ----------
 
 /**
- * Short labels for the scorecard rows: "BR/JK" for a pair (longer where partners would
- * collide, e.g. "COD/COL"), the nickname up to 6 letters for singles.
+ * Short labels for the scorecard rows. A player's Abbreviation from the Players tab wins;
+ * otherwise a pair is the first letters of each ("BR/JK", longer where partners would
+ * collide, e.g. "COD/COL") and a single player is the nickname up to 6 letters.
  */
 function abbr(names) {
-  if (names.length < 2) return (names[0] ?? '').slice(0, 6).toUpperCase();
+  const set = names.map((n) => state.players.get(n)?.abbr || '');
+  if (names.length < 2) return set[0] || (names[0] ?? '').slice(0, 6).toUpperCase();
   let n = 2;
   while (n < 6 && names[0].slice(0, n).toUpperCase() === names[1].slice(0, n).toUpperCase()) n++;
-  return names.map((x) => x.slice(0, n)).join('/').toUpperCase();
+  return names.map((x, i) => set[i] || x.slice(0, n).toUpperCase()).join('/');
 }
 const pair = (names) => names.map(esc).join(' / ');
 

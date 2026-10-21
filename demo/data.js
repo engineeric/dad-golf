@@ -1,23 +1,23 @@
 // Demo scenarios for local testing: http://localhost:8765/?demo=final
 // Each scenario returns CSV text per sheet tab, in the same shape the live sheet exports.
 
-const PLAYERS = `"Nickname","Handicap Index","Team","Flight","Captain"
-"JD","2.3","Eric","A","FALSE"
-"Eric","7.1","Eric","A","TRUE"
-"Cody","14.0","Eric","A","FALSE"
-"Cole","15.0","Eric","A","FALSE"
-"Jbone","15.3","Eric","B","FALSE"
-"Landon","15.8","Eric","B","FALSE"
-"Brad","17.3","Eric","B","FALSE"
-"Drew","23.8","Eric","B","FALSE"
-"Brandon","7.7","Garrett","A","FALSE"
-"JK","9.7","Garrett","A","FALSE"
-"Taylor","14.0","Garrett","A","FALSE"
-"Braden","14.3","Garrett","A","FALSE"
-"Nate","17.0","Garrett","B","FALSE"
-"Rikky","17.6","Garrett","B","FALSE"
-"Garrett","19.1","Garrett","B","TRUE"
-"Jeff","20.2","Garrett","B","FALSE"`;
+const PLAYERS = `"Nickname","Handicap Index","Team","Flight","Captain","Abbreviation"
+"JD","2.3","Eric","A","FALSE",""
+"Eric","7.1","Eric","A","TRUE","ERC"
+"Cody","14.0","Eric","A","FALSE","CDY"
+"Cole","15.0","Eric","A","FALSE",""
+"Jbone","15.3","Eric","B","FALSE",""
+"Landon","15.8","Eric","B","FALSE",""
+"Brad","17.3","Eric","B","FALSE",""
+"Drew","23.8","Eric","B","FALSE",""
+"Brandon","7.7","Garrett","A","FALSE",""
+"JK","9.7","Garrett","A","FALSE",""
+"Taylor","14.0","Garrett","A","FALSE","TAY"
+"Braden","14.3","Garrett","A","FALSE",""
+"Nate","17.0","Garrett","B","FALSE",""
+"Rikky","17.6","Garrett","B","FALSE",""
+"Garrett","19.1","Garrett","B","TRUE",""
+"Jeff","20.2","Garrett","B","FALSE",""`;
 
 // [round, tee time, red 1, red 2, blue 1, blue 2, leader, up, thru]; finals are derived (4 up thru 15 → 4&3).
 const MATCHES = [

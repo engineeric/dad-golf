@@ -142,6 +142,8 @@ function normalizePlayers(rows, teams) {
       side: sideOf(r.team, teams),
       flight: (r.flight || '').toUpperCase(),
       captain: truthy(r.captain),
+      // Scorecard label on score.html (up to 3 characters); blank means automatic.
+      abbr: (r.abbreviation || '').trim().toUpperCase().slice(0, 3),
     }))
     .filter((p) => p.name && p.side && p.hcp != null);
 

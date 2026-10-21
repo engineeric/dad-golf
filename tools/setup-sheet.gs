@@ -21,6 +21,12 @@ function setupSheet() {
     players.getRange(2, captainCol.index, lastPlayerRow - 1).insertCheckboxes();
     log.push('Players: tick one Captain per team');
   }
+  // Optional scorecard label (score.html), up to 3 characters; blank uses an automatic one.
+  const abbrCol = ensureColumn(players, 'Abbreviation', log);
+  const abbrCell = players.getRange(2, abbrCol.index).getA1Notation();
+  players.getRange(2, abbrCol.index, lastPlayerRow - 1).setNumberFormat('@').setDataValidation(SpreadsheetApp.newDataValidation()
+    .requireFormulaSatisfied('=LEN(' + abbrCell + ')<=3').setAllowInvalid(false)
+    .setHelpText('Up to 3 characters, shown on the scorecard (e.g. JD). Leave blank for automatic.').build());
   // Matches dropdowns list nicknames (the Players Name column is optional and best removed).
   const nameCol = headers(players).indexOf('Nickname') >= 0 ? headers(players).indexOf('Nickname') + 1 : headers(players).indexOf('Name') + 1;
   if (!nameCol) throw new Error('Players needs a Nickname column.');

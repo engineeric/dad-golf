@@ -76,7 +76,7 @@ Use this server rather than `python3 -m http.server`, whose browser caching mixe
 
 | Tab | Columns | Notes |
 |---|---|---|
-| Players | Nickname, Handicap Index, Team, Flight, Captain | Flight is A or B. Captain is a checkbox. |
+| Players | Nickname, Handicap Index, Team, Flight, Captain, Abbreviation | Flight is A or B. Captain is a checkbox. Abbreviation (optional, up to 3 characters) labels the player's row on score.html; blank means automatic (first letters of each partner, longer where partners collide; the nickname up to 6 letters in singles). |
 | Matches | Round, Tee Time, Red 1, Red 2, Blue 1, Blue 2, Leader, Up, Thru, Match | Match is 1..N per round (setupSheet fills blanks in tee order) and keys the Scores tab. Leader/Up/Thru is Eric's manual score: Leader is a team name or AS, Up is holes up (blank for AS), Thru is holes played. When Thru is filled it overrides hole entries; blank means use Scores. The final result is derived (see Live scoring); there are no Winner/Result columns. Singles leave the "2" columns blank. Rows with the same round and tee time form one group. |
 | Course Holes | Round, Hole, Par, Stroke Index | 18 rows per round, from each course's official card (men's handicap row). Drives stroke dots on score.html. |
 | Scores | Round, Match, Hole, Result, Updated, By | Written by the web app: Result is a team name, Halved, or blank (cleared). Updated is ms since 1970 from the entering phone; the newest entry per hole wins. Eric corrects results here directly. Ignored while Hole Entry is Off. |
